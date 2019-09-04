@@ -1,0 +1,4 @@
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\bin\x86\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\bin\x86\Debug\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Debug\AO_Lib.pdb

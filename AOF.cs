@@ -199,14 +199,16 @@ namespace AO_Lib
             {
                 if (IsEmulator) return (new Emulator());
 
-                int NumberOfTypes = 2;
+                int NumberOfTypes = 3;
                 int[] Devices_per_type = new int[NumberOfTypes];
 
                 string Descriptor_forSTCFilter; uint Flag_forSTC_filter;
                 Devices_per_type[0] = STC_Filter.Search_Devices(out Descriptor_forSTCFilter, out Flag_forSTC_filter);
                 Devices_per_type[1] = VNIIFTRI_Filter_v15.Search_Devices();
+                Devices_per_type[2] = VNIIFTRI_Filter_v20.Search_Devices();
                 if (Devices_per_type[0] != 0) return (new STC_Filter(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
                 else if (Devices_per_type[1] != 0) return (new VNIIFTRI_Filter_v15());
+                else if (Devices_per_type[2] != 0) return (new VNIIFTRI_Filter_v20());
                 else return (new Emulator());
 
             }
