@@ -1,0 +1,15 @@
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_Lib\AO_Lib\bin\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_Lib\AO_Lib\bin\Debug\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_Lib\AO_Lib\obj\Debug\AO_Lib.csprojResolveAssemblyReference.cache
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_Lib\AO_Lib\obj\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_Lib\AO_Lib\obj\Debug\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AOF_controller\AO_Lib\bin\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AOF_controller\AO_Lib\bin\Debug\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AOF_controller\AO_Lib\obj\Debug\AO_Lib.csprojResolveAssemblyReference.cache
+D:\Работа\Программы (мои разработки)\Спектрометры\AOF_controller\AO_Lib\obj\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AOF_controller\AO_Lib\obj\Debug\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\bin\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\bin\Debug\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\Debug\AO_Lib.csprojResolveAssemblyReference.cache
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\Debug\AO_Lib.pdb

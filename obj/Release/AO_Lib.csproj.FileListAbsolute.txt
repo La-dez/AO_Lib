@@ -1,0 +1,12 @@
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_Lib\AO_Lib\bin\Release\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_Lib\AO_Lib\bin\Release\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_Lib\AO_Lib\obj\Release\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_Lib\AO_Lib\obj\Release\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\bin\Release\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\bin\Release\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\Release\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\Release\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\Release_x86\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\Release_x86\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib_Release_x86\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib_Release_x86\AO_Lib.pdb

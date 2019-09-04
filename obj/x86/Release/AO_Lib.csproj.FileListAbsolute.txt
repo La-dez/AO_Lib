@@ -1,0 +1,12 @@
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib_Release_x86\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib_Release_x86\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\x86\Release\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\x86\Release\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\bin\x86\Release\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\bin\x86\Release\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\x86\Release\AO_Lib.csprojResolveAssemblyReference.cache
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\bin\x86\Release\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\bin\x86\Release\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.csprojResolveAssemblyReference.cache
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.pdb
