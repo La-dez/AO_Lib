@@ -81,22 +81,18 @@ namespace AO_Lib
             //перестройка угла
             public virtual int Set_Angle_1(float pAngle_1,uint AT1 = 0)
             {
-                if (AT1 != 0) sAttenuation_1_current = AT1;
                 return Set_Angle_both(pAngle_1, Angle_Current_2,AT1,Attenuation_2_current);
             }
             public virtual int Set_Hz_1(float pfreq_1, uint AT1 = 0)
             {
-                if (AT1 != 0) sAttenuation_1_current = AT1;
                 return Set_Hz_both(pfreq_1, HZ_Current_2,AT1, Attenuation_2_current);
             }
             public virtual int Set_Angle_2(float pAngle_2, uint AT2 = 0)
             {
-                if (AT2 != 0) sAttenuation_2_current = AT2;
                 return Set_Angle_both(Angle_Current_1,pAngle_2, Attenuation_1_current, AT2);
             }
             public virtual int Set_Hz_2(float pfreq_2, uint AT2 = 0)
             {
-                if (AT2 != 0) sAttenuation_2_current = AT2;
                 return Set_Hz_both(HZ_Current_1, pfreq_2, Attenuation_1_current, AT2);
             }
 
@@ -373,13 +369,12 @@ namespace AO_Lib
                         sAngle_Current_2 = Get_Angle_via_HZ(pfreq_2, 1);
                         sHZ_Current_1 = pfreq_1;
                         sHZ_Current_2 = pfreq_2;
-                        sAttenuation_1_current = AT_1;
-                        sAttenuation_2_current = AT_2;
+                        sAttenuation_1_current = (AT_1 == 0) ? (uint)Get_Intensity_via_HZ(pfreq_1, 0) : AT_1;
+                        sAttenuation_2_current = (AT_2 == 0) ? (uint)Get_Intensity_via_HZ(pfreq_2, 1) : AT_2;
                         return 0;
                     }
                     catch (Exception exc)
                     {
-
                         return (int)FTDIController.FT_STATUS.FT_OTHER_ERROR;
                     }
                 }
@@ -795,6 +790,13 @@ namespace AO_Lib
                 {
                     ivspom_2 = (uint)pCoef_PowerDecrease_2;
                 }
+                //check this
+                if (ivspom_1 < 2500) ivspom_1 = 2500;
+                if (ivspom_1 > 4000) ivspom_1 = 4000;
+                if (ivspom_2 < 2500) ivspom_2 = 2500;
+                if (ivspom_2 > 4000) ivspom_2 = 4000;
+
+
                 pfreq_1 = ((freq_was_1) * 1e6f); //in Hz
                 pfreq_2 = ((freq_was_2) * 1e6f); //in Hz
 
@@ -1100,6 +1102,8 @@ namespace AO_Lib
                     try
                     {
                         Own_UsbBuf = Create_byteMass_forHzTune(pfreq_1, pfreq_2,AT_1,AT_2);
+                        sAttenuation_1_current = (AT_1 == 0) ? (uint)Get_Intensity_via_HZ(pfreq_1, 0): AT_1;
+                        sAttenuation_2_current = (AT_2 == 0) ? (uint)Get_Intensity_via_HZ(pfreq_2, 1) : AT_2;
                         sAngle_Current_1 = Get_Angle_via_HZ(pfreq_1, 0);
                         sAngle_Current_2 = Get_Angle_via_HZ(pfreq_2, 1);
                         sHZ_Current_1 = pfreq_1;
