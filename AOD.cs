@@ -44,13 +44,19 @@ namespace AO_Lib
 
             protected virtual float sHZ_Current_1 { set; get; }
             protected virtual float sAngle_Current_1 { set; get; }
+            protected virtual uint sAttenuation_1_current { set; get; }
+
             protected virtual float sHZ_Current_2 { set; get; }
             protected virtual float sAngle_Current_2 { set; get; }
+            protected virtual uint sAttenuation_2_current { set; get; }
+
 
             public float Angle_Current_1 { get { return sAngle_Current_1; } }
             public float HZ_Current_1 { get { return sHZ_Current_1; } }
+            public uint Attenuation_1_current { get { return sAttenuation_1_current; } }
             public float Angle_Current_2 { get { return sAngle_Current_2; } }
             public float HZ_Current_2 { get { return sHZ_Current_2; } }
+            public uint Attenuation_2_current { get { return sAttenuation_2_current; } }
 
 
             //все о свипе
@@ -72,22 +78,26 @@ namespace AO_Lib
 
             ///функционал
 
-            //перестройка ДВ пропускания
+            //перестройка угла
             public virtual int Set_Angle_1(float pAngle_1,uint AT1 = 0)
             {
-                return Set_Angle_both(pAngle_1, Angle_Current_2,AT1,0);
+                if (AT1 != 0) sAttenuation_1_current = AT1;
+                return Set_Angle_both(pAngle_1, Angle_Current_2,AT1,Attenuation_2_current);
             }
             public virtual int Set_Hz_1(float pfreq_1, uint AT1 = 0)
             {
-                return Set_Hz_both(pfreq_1, HZ_Current_2,AT1,0);
+                if (AT1 != 0) sAttenuation_1_current = AT1;
+                return Set_Hz_both(pfreq_1, HZ_Current_2,AT1, Attenuation_2_current);
             }
             public virtual int Set_Angle_2(float pAngle_2, uint AT2 = 0)
             {
-                return Set_Angle_both(Angle_Current_1,pAngle_2,0, AT2);
+                if (AT2 != 0) sAttenuation_2_current = AT2;
+                return Set_Angle_both(Angle_Current_1,pAngle_2, Attenuation_1_current, AT2);
             }
             public virtual int Set_Hz_2(float pfreq_2, uint AT2 = 0)
             {
-                return Set_Hz_both(HZ_Current_1, pfreq_2,0, AT2);
+                if (AT2 != 0) sAttenuation_2_current = AT2;
+                return Set_Hz_both(HZ_Current_1, pfreq_2, Attenuation_1_current, AT2);
             }
 
             public virtual int Set_Angle_both(float pAngle_1,float pAngle_2, uint AT_1 = 0, uint AT_2 = 0)
@@ -357,12 +367,14 @@ namespace AO_Lib
                 {
                     try
                     {
-                        Own_UsbBuf = Create_byteMass_forHzTune(pfreq_1, pfreq_2, AT_1, AT_1);
+                        Own_UsbBuf = Create_byteMass_forHzTune(pfreq_1, pfreq_2, AT_1, AT_2);
                         WriteUsb(7+6);
                         sAngle_Current_1 = Get_Angle_via_HZ(pfreq_1, 0);
                         sAngle_Current_2 = Get_Angle_via_HZ(pfreq_2, 1);
                         sHZ_Current_1 = pfreq_1;
                         sHZ_Current_2 = pfreq_2;
+                        sAttenuation_1_current = AT_1;
+                        sAttenuation_2_current = AT_2;
                         return 0;
                     }
                     catch (Exception exc)
@@ -376,7 +388,35 @@ namespace AO_Lib
                     return (int)FTDIController.FT_STATUS.FT_DEVICE_NOT_FOUND;
                 }
             }
-
+            public int Set_Hz_both_viaByteMass(byte[] pBM,bool Is_InnerVaribles_changed=false, float pfreq_1=0, float pfreq_2=0, uint AT_1 = 0, uint AT_2 = 0)
+            {
+                if (AOF_Loaded_without_fails)
+                {
+                    try
+                    {                      
+                        WriteUsb(pBM, 7 + 6);
+                        if (Is_InnerVaribles_changed)
+                        {
+                            sAngle_Current_1 = Get_Angle_via_HZ(pfreq_1, 0);
+                            sAngle_Current_2 = Get_Angle_via_HZ(pfreq_2, 1);
+                            sHZ_Current_1 = pfreq_1;
+                            sHZ_Current_2 = pfreq_2;
+                            sAttenuation_1_current = AT_1;
+                            sAttenuation_2_current = AT_2;
+                        }
+                        return 0;
+                    }
+                    catch (Exception exc)
+                    {
+                        return (int)FTDIController.FT_STATUS.FT_OTHER_ERROR;
+                    }
+                }
+                else
+                {
+                    return (int)FTDIController.FT_STATUS.FT_DEVICE_NOT_FOUND;
+                }
+            }
+           
             public void Create_byteMass_forProgramm_mode(float[,] pAO_All_CurveSweep_Params)
             {
                 int i_max = pAO_All_CurveSweep_Params.GetLength(0);
@@ -729,7 +769,7 @@ namespace AO_Lib
                 return data_Own_UsbBuf;
             }
 
-            private byte[] Create_byteMass_forHzTune(float pfreq_1,float pfreq_2, uint pCoef_PowerDecrease_1 = 0, uint pCoef_PowerDecrease_2 = 0)
+            public byte[] Create_byteMass_forHzTune(float pfreq_1,float pfreq_2, uint pCoef_PowerDecrease_1 = 0, uint pCoef_PowerDecrease_2 = 0)
             {
                 float fvspom_1, fvspom_2;
                 short MSB_1, MSB_2, LSB_1, LSB_2;
