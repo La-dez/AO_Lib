@@ -49,7 +49,8 @@ namespace AO_Lib
             public virtual float AO_TimeDeviation_Max { get { return 40; } } // [мс]
             public virtual float AO_FreqDeviation_Min { get { return 0.5f; } } // [МГц]
             public virtual float AO_FreqDeviation_Max { get { return 5.0f; } }// [МГц]
-
+            public virtual bool Bit_inverse_needed { get { return false; } }
+            protected virtual bool sBit_inverse_needed { set; get; }
             //все о программируемой перестройке
             protected abstract bool sAO_ProgrammMode_Ready { set; get; }
             public bool is_Programmed { get { return sAO_ProgrammMode_Ready; } }
@@ -66,7 +67,57 @@ namespace AO_Lib
 
             public abstract string Ask_required_dev_file();
             public virtual string Ask_loaded_dev_file() { return FilterCfgName; }
-            public abstract int Read_dev_file(string path);
+            public virtual int Read_dev_file(string path)
+            {
+                // throw new Exception("Ur in lib now 8"); 
+                try
+                {
+                    var Data_from_dev = MiniHelp.Files.Read_txt(path);
+                    sBit_inverse_needed = Data_from_dev[0].Contains("true") ? true : false;
+                    if (Data_from_dev[0].Contains("true") || Data_from_dev[0].Contains("false")) Data_from_dev.RemoveAt(0);
+                    FilterCfgPath = path;
+                    FilterCfgName = System.IO.Path.GetFileName(path);
+                    float[] pWLs, pHZs, pCoefs;
+                    MiniHelp.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
+
+                    float[] pData = new float[pWLs.Length];
+                    pWLs.CopyTo(pData, 0);
+                    int RealLength = pWLs.Length - 1;
+                    if (pWLs[0] - pWLs[RealLength] > 0)
+                    {
+                        WLs = new float[pWLs.Length];
+                        HZs = new float[pWLs.Length]; ;
+                        Intensity = new float[pWLs.Length];
+                        for (int i = 0; i < pWLs.Length; i++)
+                        {
+                            WLs[i] = pWLs[RealLength - i];
+                            HZs[i] = pHZs[RealLength - i];
+                            Intensity[i] = pCoefs[RealLength - i];
+                        }
+                    }
+                    else
+                    {
+                        WLs = pWLs;
+                        HZs = pHZs;
+                        Intensity = pCoefs;
+                    }
+                    pWLs = WLs;
+                    pHZs = HZs;
+                    pCoefs = Intensity;
+                    MiniHelp.Math.Interpolate_curv(ref pWLs, ref pHZs);
+                    MiniHelp.Math.Interpolate_curv(ref pData, ref pCoefs);
+
+                    WLs = pWLs;
+                    HZs = pHZs;
+                    Intensity = pCoefs;
+
+                }
+                catch
+                {
+                    return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
+                }
+                return (int)FTDIController_lib.FT_STATUS.FT_OK;
+            }
 
             protected abstract int Init_device(uint number);
             protected abstract int Deinit_device();
@@ -237,8 +288,7 @@ namespace AO_Lib
 
             protected override bool sAO_ProgrammMode_Ready { set; get; }
 
-            public bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
-            private bool sBit_inverse_needed = false;
+            public override bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
 
             public Emulator()
             {
@@ -289,58 +339,6 @@ namespace AO_Lib
                 return 0;
             }
             
-            public override int Read_dev_file(string path)
-            {
-               // throw new Exception("Ur in lib now 8"); 
-                try
-                {
-                    var Data_from_dev = MiniHelp.Files.Read_txt(path);
-                    sBit_inverse_needed = Data_from_dev[0].Contains("true") ? true : false;
-                    if (Data_from_dev[0].Contains("true") || Data_from_dev[0].Contains("false")) Data_from_dev.RemoveAt(0);
-                    FilterCfgPath = path;
-                    FilterCfgName = System.IO.Path.GetFileName(path);
-                    float[] pWLs, pHZs, pCoefs;
-                    MiniHelp.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
-
-                    float[] pData = new float[pWLs.Length];
-                    pWLs.CopyTo(pData, 0);
-                    int RealLength = pWLs.Length-1;
-                    if (pWLs[0]-pWLs[RealLength] > 0)
-                    {
-                        WLs = new float[pWLs.Length];
-                        HZs = new float[pWLs.Length]; ;
-                        Intensity = new float[pWLs.Length];
-                        for (int i =0;i<pWLs.Length;i++)
-                        {
-                            WLs[i] = pWLs[RealLength - i];
-                            HZs[i] = pHZs[RealLength - i];
-                            Intensity[i] = pCoefs[RealLength - i];
-                        }
-                    }
-                    else
-                    {
-                        WLs = pWLs;
-                        HZs = pHZs;
-                        Intensity = pCoefs;
-                    }
-                    pWLs = WLs;
-                    pHZs = HZs;
-                    pCoefs = Intensity;
-                    MiniHelp.Math.Interpolate_curv(ref pWLs,ref pHZs);
-                    MiniHelp.Math.Interpolate_curv(ref pData,ref pCoefs);
-
-                    WLs = pWLs;
-                    HZs = pHZs;
-                    Intensity = pCoefs;
-
-                }
-                catch
-                {
-                    return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
-                }
-                return 0;
-            }
-
             public override int PowerOn()
             {
                 sAOF_isPowered = true;
@@ -760,6 +758,9 @@ namespace AO_Lib
             public override float HZ_Max { get { return HZs[0]; } }
             public override float HZ_Min { get { return HZs[WLs.Length - 1]; } }
 
+            public int Current_Attenuation { get { return sCurrent_Attenuation; } }
+            private int sCurrent_Attenuation = 0;
+
             protected override bool sAO_Sweep_On { set; get; }
             protected override bool sAO_ProgrammMode_Ready { set; get; }
             private double Reference_frequency = 350e6;
@@ -767,8 +768,9 @@ namespace AO_Lib
             private byte[] Own_ProgrammBuf;
             private UInt32 Own_dwListDescFlags = 0;
             private UInt32 Own_m_hPort = 0;
-            public bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
-            private bool sBit_inverse_needed = false;
+            public override bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
+
+
             public STC_Filter(string Descriptor,uint number,FT_HANDLE ListFlag)
             {
                 Own_dwListDescFlags = ListFlag;
@@ -850,15 +852,22 @@ namespace AO_Lib
             }
             public int Set_Hz(float freq,float pCoef_Power_Decrement = 000)
             {
+                
                 if (AOF_Loaded_without_fails)
                 {
                     try
                     {
-                        if(pCoef_Power_Decrement==0)
+                        if (pCoef_Power_Decrement == 0)
+                        {
                             Own_UsbBuf = Create_byteMass_forHzTune(freq);
+                            sCurrent_Attenuation = (int)pCoef_Power_Decrement;
+                        }
                         else
+                        {
                             Own_UsbBuf = Create_byteMass_forHzTune(freq, (uint)pCoef_Power_Decrement);
-                        WriteUsb(7);
+                            sCurrent_Attenuation = (int)pCoef_Power_Decrement;
+                        }
+                        WriteUsb(7);//установка ДВ происходит фактически тут
                         sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
                         return 0;
@@ -1541,58 +1550,7 @@ namespace AO_Lib
                 sAOF_isPowered = false;
                 return 0;
             }
-            public override int Read_dev_file(string path)
-            {
-                try
-                {
-                    var Data_from_dev = MiniHelp.Files.Read_txt(path);
-                    sBit_inverse_needed = Data_from_dev[0].Contains("true")? true : false;
-                    if (Data_from_dev[0].Contains("true") || Data_from_dev[0].Contains("false")) Data_from_dev.RemoveAt(0);
-                    FilterCfgPath = path;
-                    FilterCfgName = System.IO.Path.GetFileName(path);
-                    float[] pWLs, pHZs, pCoefs;
-                    MiniHelp.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
-
-                    float[] pData = new float[pWLs.Length];
-                    pWLs.CopyTo(pData, 0);
-                    int RealLength = pWLs.Length - 1;
-                    if (pWLs[0] - pWLs[RealLength] > 0)
-                    {
-                        WLs = new float[pWLs.Length];
-                        HZs = new float[pWLs.Length]; ;
-                        Intensity = new float[pWLs.Length];
-                        for (int i = 0; i < pWLs.Length; i++)
-                        {
-                            WLs[i] = pWLs[RealLength - i];
-                            HZs[i] = pHZs[RealLength - i];
-                            Intensity[i] = pCoefs[RealLength - i];
-                        }
-                    }
-                    else
-                    {
-                        WLs = pWLs;
-                        HZs = pHZs;
-                        Intensity = pCoefs;
-                    }
-                    pWLs = WLs;
-                    pHZs = HZs;
-                    pCoefs = Intensity;
-                    MiniHelp.Math.Interpolate_curv(ref pWLs, ref pHZs);
-                    MiniHelp.Math.Interpolate_curv(ref pData, ref pCoefs);
-
-                    WLs = pWLs;
-                    HZs = pHZs;
-                    Intensity = pCoefs;
-
-                    FilterCfgPath = path;
-                    FilterCfgName = System.IO.Path.GetFileName(path);
-                }
-                catch
-                {
-                    return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
-                }
-                return (int)FTDIController_lib.FT_STATUS.FT_OK;
-            }
+           
             public override void Dispose()
             {
                 Deinit_device();
