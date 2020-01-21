@@ -764,14 +764,19 @@ namespace AO_Lib
             protected override bool sAO_Sweep_On { set; get; }
             protected override bool sAO_ProgrammMode_Ready { set; get; }
             private double Reference_frequency = 350e6;
+            private const double dT_sweep_min = 11.42;
+            private const double F_deviat_max = 5000;//KHz
+            private const double dF_deviat_max = 200;//KHz
             private byte[] Own_UsbBuf = new byte[5000];
             private byte[] Own_ProgrammBuf;
             private UInt32 Own_dwListDescFlags = 0;
             private UInt32 Own_m_hPort = 0;
             public override bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
 
-
-            public STC_Filter(string Descriptor,uint number,FT_HANDLE ListFlag)
+            /// <summary>
+            /// Конструктор. Инициализирует экземляр класса по номеру (и дескриптору) физического АО фильтра
+            /// </summary>
+            public STC_Filter(string Descriptor,uint number,FT_HANDLE ListFlag) 
             {
                 Own_dwListDescFlags = ListFlag;
                 FilterDescriptor_or_name = Descriptor;
@@ -787,12 +792,19 @@ namespace AO_Lib
                     AOF_Loaded_without_fails = false;
                 }
             }
+           
+            /// <summary>
+            /// Деструктор
+            /// </summary>
             ~STC_Filter()
             {
                 this.PowerOff();
                 this.Dispose();
             }
-
+         
+            /// <summary>
+            /// Устанавливает на АОФ заданную длину волны в нм.
+            /// </summary>
             public override int Set_Wl(float pWL)
             {
                 if (AOF_Loaded_without_fails)
@@ -814,6 +826,10 @@ namespace AO_Lib
                     return (int)FTDIController_lib.FT_STATUS.FT_DEVICE_NOT_FOUND;
                 }
             }
+           
+            /// <summary>
+            /// Устанавливает на АОФ заданную частоту в МГц.
+            /// </summary>
             public override int Set_Hz(float freq)
             {
                 if (AOF_Loaded_without_fails)
@@ -837,6 +853,11 @@ namespace AO_Lib
                     return (int)FTDIController_lib.FT_STATUS.FT_DEVICE_NOT_FOUND;
                 }
             }
+
+            /// <summary>
+            /// Устанавливает частоту на АОФ при помощи заранее вычисленного массива байт.
+            /// Для вычисления массива необходимо использовать функцию Create_byteMass_forHzTune
+            /// </summary>
             public int Set_Hz_via_bytemass(byte[] buf)
             {
                 try
@@ -850,6 +871,11 @@ namespace AO_Lib
                     return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
                 }
             }
+
+            /// <summary>
+            /// Устанавливает на АОФ заданную частоту в МГц. Позволяет задать коэффициент ослабления.
+            /// Пока что (21.01.2020) доступна только для заданного класса. По основному содержимому не отличается от Set_Hz(float freq)
+            /// </summary>
             public int Set_Hz(float freq,float pCoef_Power_Decrement = 000)
             {
                 
@@ -867,7 +893,7 @@ namespace AO_Lib
                             Own_UsbBuf = Create_byteMass_forHzTune(freq, (uint)pCoef_Power_Decrement);
                             sCurrent_Attenuation = (int)pCoef_Power_Decrement;
                         }
-                        WriteUsb(7);//установка ДВ происходит фактически тут
+                        WriteUsb(7);//установка частоты происходит фактически тут
                         sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
                         return 0;
@@ -884,8 +910,58 @@ namespace AO_Lib
                 }
             }
 
+            /// <summary>
+            /// Создает по заданным параметром массив байт для перестройки на определенную частоту.
+            /// </summary>
+            public byte[] Create_byteMass_forHzTune(float pfreq, uint pCoef_PowerDecrease = 0)
+            {
+                float fvspom; short MSB, LSB; ulong lvspom;
+
+                float freq_was = pfreq;
+                byte[] data_Own_UsbBuf = new byte[5000];
+                uint ivspom = 1700;
+                if (pCoef_PowerDecrease == 0)
+                    ivspom = (uint)Get_Intensity_via_HZ(pfreq);
+                else
+                    ivspom = pCoef_PowerDecrease;
+
+
+                pfreq = (freq_was) /*/ 1.17f*/; //in MHz
+                                                //set init freq
+                pfreq = ((freq_was) * 1e6f) /*/ 1.17f*/; //in Hz
+
+                fvspom = pfreq / (float)Reference_frequency;
+                lvspom = (ulong)((pfreq) * (Math.Pow(2.0, 32.0) / Reference_frequency));
+                //fvspom*pow(2.0,32.0);
+                //lvspom=freq;
+                MSB = (short)(0x0000ffFF & (lvspom >> 16));
+                LSB = (short)lvspom;
+
+                data_Own_UsbBuf[0] = 0x03; //it means, we will send wavelength
+
+                data_Own_UsbBuf[1] = (byte)(0x00ff & (MSB >> 8));
+                data_Own_UsbBuf[2] = (byte)MSB;
+                data_Own_UsbBuf[3] = (byte)(0x00ff & (LSB >> 8));
+                data_Own_UsbBuf[4] = (byte)LSB;
+                data_Own_UsbBuf[5] = (byte)(0x00ff & (ivspom >> 8));
+                data_Own_UsbBuf[6] = (byte)ivspom;
+
+                int b2w = 7;
+
+                for (int i = 0; i < b2w; i++)
+                {
+                    data_Own_UsbBuf[i] = (byte)AO_Devices.FTDIController_lib.Bit_reverse(data_Own_UsbBuf[i], Bit_inverse_needed);
+                }
+                return data_Own_UsbBuf;
+            }
+
+            /// <summary>
+            /// Программируемый режим. Реализован не на всех типах АО (21.01.2020). 
+            /// Формирует байтовый массив по заданным параметрам для активации программируемого режима
+            /// </summary>          
             public void Create_byteMass_forProgramm_mode(float[,] pAO_All_CurveSweep_Params)
             {
+                // TODO: прописать описание входного массива.
                 int i_max = pAO_All_CurveSweep_Params.GetLength(0);
                 float[,] Mass_of_params = new float[i_max, 7];
                 int i = 0;
@@ -970,7 +1046,10 @@ namespace AO_Lib
                 Own_ProgrammBuf = Result_mass;
                 sAO_ProgrammMode_Ready = true;
             }
-                           
+
+            /// <summary>
+            /// Программируемый режим. Формирует часть массива байт, связанных со свипом.
+            /// </summary>        
             private byte[] Create_byteMass_forProgrammMode_Sweep(float pMHz_start, float pSweep_range_MHz /*не менее 1МГц*/, double pPeriod/*[мс с точностью до двух знаков,минимум 1]*/, ref int pcount)
             {
                 float freq, fvspom;
@@ -1039,7 +1118,10 @@ namespace AO_Lib
                 }
                 return data_Own_UsbBuf;
             }
-           
+
+            /// <summary>
+            /// Программируемый режим. Формирует часть массива байт, связанных со обычной перестройкой.
+            /// </summary>  
             private byte[] Create_byteMass_forProgrammMode_HZTune(float pfreq, double pPeriod/*[мс с точностью до двух знаков,минимум 1]*/, ref int pcount)
             {
                 float freq, fvspom;
@@ -1064,11 +1146,7 @@ namespace AO_Lib
                 }
                 for (i = 0; i < steps; i++)//перепроверить цикл
                 {
-                   // if(i<10)
-                   //      freq = (float)(((127.287) * 1e6f)/* / 1.17f*/);//1.17 коррекция частоты
-                  //  else
-                   //     freq = (float)(((77.852) * 1e6f)/* / 1.17f*/);//1.17 коррекция частоты
-                                                                      
+
                     if (i < 10)
                         freq = (float)(((pfreq) * 1e6f)/* / 1.17f*/);//1.17 коррекция частоты
                     else
@@ -1106,117 +1184,9 @@ namespace AO_Lib
                 return data_Own_UsbBuf;
             }
 
-            private byte[] Create_byteMass_forSweep_old(float pMHz_start, float pSweep_range_MHz, double pPeriod/*[мс с точностью до двух знаков,минимум 1]*/, bool pOnRepeat, ref int pcount)
-            {
-                float freq, fvspom;
-                short MSB, LSB;
-                ulong lvspom;
-                uint ivspom;
-                float delta;
-                int steps;
-                int i;
-                float freqMCU = 74.99e6f;
-                float inp_freq = 20 * 1000.0f / (float)pPeriod; //in Hz, max 4500 hz //дефолт от Алексея
-                double New_Freq_byTime = (pSweep_range_MHz * 1e3f / pPeriod); // [kHz/ms] , 57.4 и более //375
-                double Step_kHZs = pSweep_range_MHz * 1e3f / 20.0f;                                     //   было 200, [kHz] // В новом режиме 500 kHz - дефолт от Алексея 
-                double Steps_by1MHz = 1e3f / Step_kHZs;                     //      [шагов/МГц]   
-
-                pcount = 6 - 1;
-                //   steps = (int)Math.Floor(pSweep_range_MHz * Steps_by1MHz); // number of the steps
-                steps = 20;
-                double Step_HZs = Step_kHZs * 1000;
-
-                int total_count = pcount + 1 + 4 * steps + 3;
-                byte[] data_Own_UsbBuf = new byte[total_count];
-
-                for (i = 1; i < total_count; i++)
-                {
-                    data_Own_UsbBuf[i] = 0;
-                }
-                for (i = 0; i < steps; i++)//перепроверить цикл
-                {
-
-                    freq = (float)(((pMHz_start) * 1e6f + i * Step_HZs) /*/ 1.17f*/);//1.17 коррекция частоты
-                                                                                     //fvspom=freq/Reference_frequency;
-                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / Reference_frequency)); //расчет управляющего слова для частоты
-                    MSB = (short)(0x0000ffFF & (lvspom >> 16));
-                    LSB = (short)lvspom;
-                    data_Own_UsbBuf[pcount + 1] = (byte)(0x00ff & (MSB >> 8));
-                    data_Own_UsbBuf[pcount + 2] = (byte)(MSB);
-                    data_Own_UsbBuf[pcount + 3] = (byte)(0x00ff & (LSB >> 8));
-                    data_Own_UsbBuf[pcount + 4] = (byte)(LSB);
-                    pcount += 4;
-                }
-
-                pcount -= 4;//компенсация последнего смещения
-
-                //timer calculations
-                ivspom = (uint)(65536 - freqMCU / (2 * 2 * inp_freq));
-
-                /*data_Own_UsbBuf[0] = (byte)(0x00ff & (pcount >> 8));
-                  data_Own_UsbBuf[1] = (byte)(pcount);
-                  data_Own_UsbBuf[2] = (byte)(0x00ff & (ivspom >> 8)); ;
-                  data_Own_UsbBuf[3] = (byte)ivspom;*/
-                data_Own_UsbBuf[0] = (0x14);
-                data_Own_UsbBuf[1] = (0x11);
-                data_Own_UsbBuf[2] = (0x12);
-                data_Own_UsbBuf[3] = (0x0);
-                data_Own_UsbBuf[4] = (byte)(0x00ff & (ivspom >> 8)); ;
-                data_Own_UsbBuf[5] = (byte)ivspom;
-                data_Own_UsbBuf[5 + 1 + 4 * steps + 0] = (0x15);
-                data_Own_UsbBuf[5 + 1 + 4 * steps + 1] = (0x15);
-                data_Own_UsbBuf[5 + 1 + 4 * steps + 2] = (0x15);
-
-                pcount = total_count;
-                //
-                for (i = 0; i < total_count; i++)
-                {
-                    data_Own_UsbBuf[i] = (byte)FTDIController_lib.Bit_reverse(data_Own_UsbBuf[i], Bit_inverse_needed);
-                }
-                return data_Own_UsbBuf;
-            }
-           
-            public byte[] Create_byteMass_forHzTune(float pfreq,uint pCoef_PowerDecrease = 0)
-            {
-                float fvspom; short MSB, LSB; ulong lvspom;
-
-                float freq_was = pfreq;
-                byte[] data_Own_UsbBuf = new byte[5000];
-                uint ivspom = 1700;
-                if (pCoef_PowerDecrease == 0)
-                    ivspom = (uint)Get_Intensity_via_HZ(pfreq);
-                else
-                    ivspom = pCoef_PowerDecrease;
-
-
-                pfreq = (freq_was) /*/ 1.17f*/; //in MHz
-                                                //set init freq
-                pfreq = ((freq_was) * 1e6f) /*/ 1.17f*/; //in Hz
-
-                fvspom = pfreq / (float)Reference_frequency;
-                lvspom = (ulong)((pfreq) * (Math.Pow(2.0, 32.0) / Reference_frequency));
-                //fvspom*pow(2.0,32.0);
-                //lvspom=freq;
-                MSB = (short)(0x0000ffFF & (lvspom >> 16));
-                LSB = (short)lvspom;
-
-                data_Own_UsbBuf[0] = 0x03; //it means, we will send wavelength
-
-                data_Own_UsbBuf[1] = (byte)(0x00ff & (MSB >> 8));
-                data_Own_UsbBuf[2] = (byte)MSB;
-                data_Own_UsbBuf[3] = (byte)(0x00ff & (LSB >> 8));
-                data_Own_UsbBuf[4] = (byte)LSB;
-                data_Own_UsbBuf[5] = (byte)(0x00ff & (ivspom >> 8));
-                data_Own_UsbBuf[6] = (byte)ivspom;
-
-                int b2w = 7;
-                 
-                for (int i = 0; i < b2w; i++)
-                {
-                    data_Own_UsbBuf[i] = (byte)AO_Devices.FTDIController_lib.Bit_reverse(data_Own_UsbBuf[i], Bit_inverse_needed);
-                }
-                return data_Own_UsbBuf;
-            }
+            /// <summary>
+            /// Программируемый режим. Активирует программируемый режим.
+            /// </summary>  
             public int Set_ProgrammMode_on()
             {
                 try
@@ -1227,12 +1197,17 @@ namespace AO_Lib
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
                 return (int)FTDIController_lib.FT_STATUS.FT_OK;
             }
+
+            /// <summary>
+            /// Программируемый режим. Деактивирует программируемый режим. Устанавливается центральная частота.
+            /// </summary>  
             public int Set_ProgrammMode_off()
             {
 
               //  is_Programmed = false;
                 return Set_Hz((HZ_Max + HZ_Min) / 2.0f);
             }
+
             private byte[] Create_byteMass_forSweep(float pMHz_start, float pSweep_range_MHz, double pPeriod/*[мс с точностью до двух знаков,минимум 1]*/, ref int pcount)
             {
                 float freq, fvspom;
@@ -1301,6 +1276,97 @@ namespace AO_Lib
                 }
                 return data_Own_UsbBuf;
             }
+
+            /// <summary>
+            /// Пересчитывает заданные пользователем параметры свипинга в массив конечных данных
+            /// </summary>
+            /// <param name="pMHz_start">Начальная частота в МГц</param>
+            /// <param name="pSweep_range_MHz">Диапазон варьирования. Максимум 5 МГц (012020)</param>
+            /// <param name="pPeriod">Временной интервал, в течение которого необходимо провести один цикл изменения частот</param>
+            /// <param name="pMHz_start">Форма профиля одно цикла: 0 - равнобедренный треугольник, 1 - прямоугольный треугольник</param>
+            private void Calculate_sweep_params_012020(float pMHz_start, float pSweep_range_MHz, double pPeriod, bool form )
+            {
+                //Принципы: делаем не меньше 25*2 шагов, если профиль - равнобедренный треугольник, и 25+1 шагов, если прямоугольный
+                //Почему? Исходя из максимальной девиации в dF = 5 МГц и максимального шага в 200 KHz. Шаг мы всегда можем сделать меньше. Но не больше.
+                int steps_min = (int)(F_deviat_max / dF_deviat_max);
+                steps_min = form ? (steps_min * 2) : (steps_min + 1);
+                double t_dev_min = dT_sweep_min * steps_min;
+                double t_dev_max = dT_sweep_min * 1000; //а вот 1000 шагов мы можем сделать всегда. Но не более.
+                if(pPeriod < t_dev_min) { //exception
+                }
+
+            }
+            private byte[] Create_byteMass_forSweep_012020(int[] Freq_mass_hz, int time_multiplier)
+            {
+
+                return null;
+                //float freq, fvspom;
+                //short MSB, LSB;
+                //ulong lvspom;
+                //uint ivspom;
+                //float delta;
+                //int steps;
+                //int i;
+                //float freqMCU = 74.99e6f;
+                //float inp_freq = 20 * 1000.0f / (float)pPeriod; //in Hz, max 4500 hz //дефолт от Алексея
+                //double New_Freq_byTime = (pSweep_range_MHz * 1e3f / pPeriod); // [kHz/ms] , 57.4 и более //375
+                //double Step_kHZs = pSweep_range_MHz * 1e3f / 20.0f;                                     //   было 200, [kHz] // В новом режиме 500 kHz - дефолт от Алексея 
+                //double Steps_by1MHz = 1e3f / Step_kHZs;                     //      [шагов/МГц]   
+                //pcount = 4 + 2 - 1;//4 бита на начальный массив, 2 на таймер
+                //steps = 20;
+                //double Step_HZs = Step_kHZs * 1000;
+
+                //int total_count = pcount + 1 + 4 * steps + 3;
+                //byte[] data_Own_UsbBuf = new byte[total_count];
+                //bool isInverse_needed = Bit_inverse_needed;
+                //byte[] Start_mass = new byte[4] { (byte)FTDIController_lib.Bit_reverse(0x14,isInverse_needed), (byte)FTDIController_lib.Bit_reverse(0x11,isInverse_needed),
+                //    (byte)FTDIController_lib.Bit_reverse(0x12,isInverse_needed), (byte)FTDIController_lib.Bit_reverse(0xff,isInverse_needed) };
+                //byte[] Finish_mass = new byte[3] { (byte)FTDIController_lib.Bit_reverse(0x15,isInverse_needed), (byte)FTDIController_lib.Bit_reverse(0x15,isInverse_needed),
+                //    (byte)FTDIController_lib.Bit_reverse(0x15,isInverse_needed) };
+
+                //for (i = 1; i < total_count; i++)
+                //{
+                //    data_Own_UsbBuf[i] = 0;
+                //}
+                //for (i = 0; i < steps; i++)//перепроверить цикл
+                //{
+
+                //    freq = (float)(((pMHz_start) * 1e6f + i * Step_HZs)/*/ 1.17f*/);//1.17 коррекция частоты
+                //                                                                    //fvspom=freq/Reference_frequency;
+                //    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / Reference_frequency)); //расчет управляющего слова для частоты
+                //    MSB = (short)(0x0000ffFF & (lvspom >> 16));
+                //    LSB = (short)lvspom;
+                //    data_Own_UsbBuf[pcount + 1] = (byte)(0x00ff & (MSB >> 8));
+                //    data_Own_UsbBuf[pcount + 2] = (byte)(MSB);
+                //    data_Own_UsbBuf[pcount + 3] = (byte)(0x00ff & (LSB >> 8));
+                //    data_Own_UsbBuf[pcount + 4] = (byte)(LSB);
+                //    pcount += 4;
+                //}
+
+                //pcount -= 4;//компенсация последнего смещения
+
+                ////timer calculations
+                //ivspom = (uint)(65536 - freqMCU / (2 * 2 * inp_freq));
+
+                //data_Own_UsbBuf[4] = (byte)(0x00ff & (ivspom >> 8)); ;
+                //data_Own_UsbBuf[5] = (byte)ivspom;
+                //pcount = total_count;
+                ////
+                //for (i = 0; i < total_count; i++)
+                //{
+                //    data_Own_UsbBuf[i] = (byte)FTDIController_lib.Bit_reverse(data_Own_UsbBuf[i], isInverse_needed);
+                //}
+                //for (i = 0; i < 4; i++)
+                //{
+                //    data_Own_UsbBuf[i] = Start_mass[i];
+                //}
+                //for (i = 0; i < 3; i++)
+                //{
+                //    data_Own_UsbBuf[i + total_count - 3] = Finish_mass[i];
+                //}
+                //return data_Own_UsbBuf;
+            }
+
             public/* override */int Set_Sweep_on_test(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
             {
                 //здесь MHz_start = m_f0 - начальна частота в МГц    
@@ -1367,6 +1433,7 @@ namespace AO_Lib
                 }
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
             }
+
             public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
             {
                 //здесь MHz_start = m_f0 - начальна частота в МГц    
@@ -1395,7 +1462,7 @@ namespace AO_Lib
                 }
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
             }
-            
+
             public override int Set_Sweep_off()
             {
                 return Set_Hz(HZ_Current);
@@ -1414,6 +1481,7 @@ namespace AO_Lib
                 return (int)FTDIController.FT_STATUS.FT_OK;*/
 
             }
+
             public override int Set_OutputPower(byte Percentage)
             {
                 try
@@ -1426,6 +1494,7 @@ namespace AO_Lib
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
                 return 0;
             }
+
             protected override int Init_device(uint number)
             {
                 AO_Devices.FTDIController_lib.FT_STATUS ftStatus = AO_Devices.FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
@@ -1464,16 +1533,19 @@ namespace AO_Lib
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
                 return 0;
             }
+
             protected override int Deinit_device()
             {
                 System.Threading.Thread.Sleep(100);
                 int result = Convert.ToInt16(AO_Devices.FTDIController_lib.FT_Close(Own_m_hPort));
                 return result;
             }
+
             public override string Ask_required_dev_file()
             {
                 return ("(special *.dev file)");
             }
+
             public static unsafe int Search_Devices(out string data_FilterDescriptor_or_name, out uint data_dwListDescFlags)
             {
                 FTDIController_lib.FT_STATUS ftStatus = FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
@@ -1524,16 +1596,19 @@ namespace AO_Lib
                 data_FilterDescriptor_or_name = datastring;
                 return countofdevs_to_return;
             }
+
             public override string Implement_Error(int pCode_of_error)
             {
                 return ((FTDIController_lib.FT_STATUS)pCode_of_error).ToString();
             }
+
             public override int PowerOn()
             {
                 var state = Set_Hz((HZ_Max + HZ_Min) / 2);
                 sAOF_isPowered = true;
                 return state;
             }
+
             public override int PowerOff()
             {
                 try
