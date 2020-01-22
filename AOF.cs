@@ -63,6 +63,16 @@ namespace AO_Lib
             public abstract int Set_OutputPower(byte percentage);
 
             public abstract int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat);
+           /* {
+                sAO_Sweep_On = true;
+
+                byte[] Own_UsbBuf = new byte[5000];
+                int count = 0;
+                int Multiplier = 0;
+                int[] HZMass = STC_Filter.Calculate_sweep_params_012020(MHz_start, Sweep_range_MHz, Period, true, ref Multiplier);
+                Own_UsbBuf = STC_Filter.Create_byteMass_byKnownParams_012020(HZMass, Multiplier);
+                return 0;
+            }*/
             public abstract int Set_Sweep_off();
 
             public abstract string Ask_required_dev_file();
@@ -1191,8 +1201,7 @@ namespace AO_Lib
             public int Set_ProgrammMode_on()
             {
                 try
-                {
-                    
+                {                   
                     WriteUsb(Own_ProgrammBuf, Own_ProgrammBuf.Length);
                 }
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
@@ -1283,15 +1292,16 @@ namespace AO_Lib
             /// </summary>
             /// <param name="pMHz_start">Начальная частота в МГц</param>
             /// <param name="pSweep_range_MHz">Диапазон варьирования. Максимум 5 МГц (012020)</param>
-            /// <param name="pPeriod">Временной интервал, в течение которого необходимо провести один цикл изменения частот, мкс</param>
+            /// <param name="pPeriod">Временной интервал, в течение которого необходимо провести один цикл изменения частот, мкс. Минимум - 0,571 мкс (012020)</param>
             /// <param name="pMHz_start">Форма профиля одно цикла: 0 - равнобедренный треугольник, 1 - прямоугольный треугольник</param>
-            private void Calculate_sweep_params_012020(float pMHz_start, float pSweep_range_MHz, double pPeriod_mks, bool form )
+            public static int[] Calculate_sweep_params_012020(float pMHz_start, float pSweep_range_MHz, double pPeriod_mks, bool isTriangle, ref int Multiplier)
             {
-                //Принципы: делаем не меньше 25*2 шагов, если профиль - равнобедренный треугольник, и 25+1 шагов, если прямоугольный
+                //Принципы: делаем не меньше 25*2 шагов, так как в противном случае можем натыкаться на частные ограничения
+                //Например, невозможно пройти 5 МГц в обе стороны (50 шагов) за время в 0,3 мкс
                 //Почему? Исходя из максимальной девиации в dF = 5 МГц и максимального шага в 200 KHz. Шаг мы всегда можем сделать меньше. Но не больше.
                 //позже решил исходить из 1000 шагов. Так оказалось проще
                 int steps_min = (int)(F_deviat_max / dF_deviat_max);
-                steps_min = form ? (steps_min * 2) : (steps_min + 1);
+                steps_min = (steps_min * 2);
                 double t_dev_min = dT_sweep_min * steps_min;
                 double t_dev_max = dT_sweep_max * 1000; //а вот 1000 шагов мы можем сделать всегда. Но не более. Здесь это примерно 0,748мс
 
@@ -1300,17 +1310,30 @@ namespace AO_Lib
                 { throw new Exception(); }
 
 
-                int Num_of_steps = 1000;
+                int Num_of_steps = 50;
                 double dT_current_ns = (double)pPeriod_ns / (double)Num_of_steps;
-                while (dT_current_ns > dT_sweep_max || dT_current_ns < dT_sweep_min || Num_of_steps>= steps_min*2) //в этом цикле вычисляется количество шагов в случае, если 1000 не подходит
+                while (dT_current_ns > dT_sweep_max || dT_current_ns < dT_sweep_min)
+                    //в этом цикле вычисляется количество шагов в случае, если 50 не подходит,
+                    //с учетом минимизации количества шагов (для того, чтобы минимизировать погрешность)
                 {
-                    Num_of_steps = Num_of_steps / 2;
-                    dT_current_ns = (double)pPeriod_ns / (double)Num_of_steps;
+                    if (Num_of_steps >= steps_min * 2)
+                    {
+                        Num_of_steps = Num_of_steps / 2;
+                        dT_current_ns = (double)pPeriod_ns / (double)Num_of_steps;
+                    }
+                    else 
+                    if(Num_of_steps >= steps_min +1)
+                    {
+                        Num_of_steps = Num_of_steps - 1;
+                        dT_current_ns = (double)pPeriod_ns / (double)Num_of_steps;
+                    }
                 }
+                //подумать, как минимизировать погрешность по времени. Если , скажем, dT_current_ns=16нс, то ближайшее, что мы можем взять - 11,42нс
 
-                int Multiplier = (int)(dT_current_ns / dT_sweep_min);
+
+                int data_Multiplier = (int)(dT_current_ns / dT_sweep_min)+1;
                 int[] Freq_mass_hz;
-                if(form)
+                if(isTriangle)
                 {
                     if (Num_of_steps % 2 != 0) Num_of_steps += 1;
 
@@ -1343,79 +1366,59 @@ namespace AO_Lib
                 }
                 //массив частот посчитан Freq_mass_hz[i] 
                 //время перестройки известно dT_current_ns //множитель известен Multiplier
-
-
+                Multiplier = data_Multiplier;
+                return Freq_mass_hz;
 
             }
-            private byte[] Create_byteMass_forSweep_012020(int[] Freq_mass_hz, int time_multiplier)
+            public static byte[] Create_byteMass_byKnownParams_012020(int[] Freq_mass_hz, int time_multiplier)
             {
+                int totalcount = 1 + 2 + 4 * Freq_mass_hz.Length + 2;
+                //1 байт на стартовую команду, 2 - на обозначение длины, 4 на каждую частоту, 2 на множитель ramp
+                byte[] data_Own_UsbBuf = new byte[totalcount];
+                data_Own_UsbBuf[0] = 0xC0;
 
-                return null;
-                //float freq, fvspom;
-                //short MSB, LSB;
-                //ulong lvspom;
-                //uint ivspom;
-                //float delta;
-                //int steps;
-                //int i;
-                //float freqMCU = 74.99e6f;
-                //float inp_freq = 20 * 1000.0f / (float)pPeriod; //in Hz, max 4500 hz //дефолт от Алексея
-                //double New_Freq_byTime = (pSweep_range_MHz * 1e3f / pPeriod); // [kHz/ms] , 57.4 и более //375
-                //double Step_kHZs = pSweep_range_MHz * 1e3f / 20.0f;                                     //   было 200, [kHz] // В новом режиме 500 kHz - дефолт от Алексея 
-                //double Steps_by1MHz = 1e3f / Step_kHZs;                     //      [шагов/МГц]   
-                //pcount = 4 + 2 - 1;//4 бита на начальный массив, 2 на таймер
-                //steps = 20;
-                //double Step_HZs = Step_kHZs * 1000;
+                byte[] data_L = uInt_to_2bytes((uint)(4 * Freq_mass_hz.Length + 2));
+                data_Own_UsbBuf[1] = data_L[0];
+                data_Own_UsbBuf[2] = data_L[1];
 
-                //int total_count = pcount + 1 + 4 * steps + 3;
-                //byte[] data_Own_UsbBuf = new byte[total_count];
-                //bool isInverse_needed = Bit_inverse_needed;
-                //byte[] Start_mass = new byte[4] { (byte)FTDIController_lib.Bit_reverse(0x14,isInverse_needed), (byte)FTDIController_lib.Bit_reverse(0x11,isInverse_needed),
-                //    (byte)FTDIController_lib.Bit_reverse(0x12,isInverse_needed), (byte)FTDIController_lib.Bit_reverse(0xff,isInverse_needed) };
-                //byte[] Finish_mass = new byte[3] { (byte)FTDIController_lib.Bit_reverse(0x15,isInverse_needed), (byte)FTDIController_lib.Bit_reverse(0x15,isInverse_needed),
-                //    (byte)FTDIController_lib.Bit_reverse(0x15,isInverse_needed) };
+                byte[] data_iFreq = new byte[4];
 
-                //for (i = 1; i < total_count; i++)
-                //{
-                //    data_Own_UsbBuf[i] = 0;
-                //}
-                //for (i = 0; i < steps; i++)//перепроверить цикл
-                //{
+                ulong data_lvspom;
+                for(int i = 0;i< Freq_mass_hz.Length;i++)
+                {
+                    data_lvspom = (ulong)((Freq_mass_hz[i]) * (Math.Pow(2.0, 32.0) / 350e6));
+                    data_iFreq = uLong_to_4bytes(data_lvspom);
+                    data_Own_UsbBuf[2 + i * 4 + 1] = data_iFreq[0];
+                    data_Own_UsbBuf[2 + i * 4 + 2] = data_iFreq[1];
+                    data_Own_UsbBuf[2 + i * 4 + 3] = data_iFreq[2];
+                    data_Own_UsbBuf[2 + i * 4 + 4] = data_iFreq[3];
+                }
+                byte[] data_T = uInt_to_2bytes((uint)time_multiplier);
+                data_Own_UsbBuf[2 + 4 * Freq_mass_hz.Length + 1] = data_T[0];
+                data_Own_UsbBuf[2 + 4 * Freq_mass_hz.Length + 2] = data_T[1];
 
-                //    freq = (float)(((pMHz_start) * 1e6f + i * Step_HZs)/*/ 1.17f*/);//1.17 коррекция частоты
-                //                                                                    //fvspom=freq/Reference_frequency;
-                //    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / Reference_frequency)); //расчет управляющего слова для частоты
-                //    MSB = (short)(0x0000ffFF & (lvspom >> 16));
-                //    LSB = (short)lvspom;
-                //    data_Own_UsbBuf[pcount + 1] = (byte)(0x00ff & (MSB >> 8));
-                //    data_Own_UsbBuf[pcount + 2] = (byte)(MSB);
-                //    data_Own_UsbBuf[pcount + 3] = (byte)(0x00ff & (LSB >> 8));
-                //    data_Own_UsbBuf[pcount + 4] = (byte)(LSB);
-                //    pcount += 4;
-                //}
+                return data_Own_UsbBuf;
 
-                //pcount -= 4;//компенсация последнего смещения
-
-                ////timer calculations
-                //ivspom = (uint)(65536 - freqMCU / (2 * 2 * inp_freq));
-
-                //data_Own_UsbBuf[4] = (byte)(0x00ff & (ivspom >> 8)); ;
-                //data_Own_UsbBuf[5] = (byte)ivspom;
-                //pcount = total_count;
-                ////
-                //for (i = 0; i < total_count; i++)
-                //{
-                //    data_Own_UsbBuf[i] = (byte)FTDIController_lib.Bit_reverse(data_Own_UsbBuf[i], isInverse_needed);
-                //}
-                //for (i = 0; i < 4; i++)
-                //{
-                //    data_Own_UsbBuf[i] = Start_mass[i];
-                //}
-                //for (i = 0; i < 3; i++)
-                //{
-                //    data_Own_UsbBuf[i + total_count - 3] = Finish_mass[i];
-                //}
-                //return data_Own_UsbBuf;
+            }
+          
+            public static byte[] uLong_to_4bytes(ulong lvspom)
+            {
+                short MSB, LSB;
+                byte[] result = new byte[4];
+                MSB = (short)(0x0000ffFF & (lvspom >> 16));
+                LSB = (short)lvspom;
+                result[0] = (byte)(0x00ff & (MSB >> 8));
+                result[1] = (byte)(MSB);
+                result[2] = (byte)(0x00ff & (LSB >> 8));
+                result[3] = (byte)(LSB);
+                return result;
+            }
+            public static byte[] uInt_to_2bytes(ulong ivspom)
+            {
+                byte[] result = new byte[2];
+                result[0] = (byte)(0x00ff & (ivspom >> 8)); ;
+                result[1] = (byte)ivspom;
+                return result;
             }
 
             public/* override */int Set_Sweep_on_test(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
@@ -1494,7 +1497,9 @@ namespace AO_Lib
 
                     Own_UsbBuf = new byte[5000];
                     int count = 0;
-                    Own_UsbBuf = Create_byteMass_forSweep(MHz_start, Sweep_range_MHz, Period, ref count);
+                    int Multiplier = 0;
+                    int[] HZMass = Calculate_sweep_params_012020(MHz_start, Sweep_range_MHz, Period, true, ref Multiplier);
+                    Own_UsbBuf = Create_byteMass_byKnownParams_012020(HZMass, Multiplier);
 
                /*      FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
                     FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // Purge(FT_PURGE_RX || FT_PURGE_TX);
