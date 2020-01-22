@@ -765,6 +765,7 @@ namespace AO_Lib
             protected override bool sAO_ProgrammMode_Ready { set; get; }
             private double Reference_frequency = 350e6;
             private const double dT_sweep_min = 11.42;
+            private const double dT_sweep_max = 11.42*65536;
             private const double F_deviat_max = 5000;//KHz
             private const double dF_deviat_max = 200;//KHz
             private byte[] Own_UsbBuf = new byte[5000];
@@ -1282,18 +1283,68 @@ namespace AO_Lib
             /// </summary>
             /// <param name="pMHz_start">Начальная частота в МГц</param>
             /// <param name="pSweep_range_MHz">Диапазон варьирования. Максимум 5 МГц (012020)</param>
-            /// <param name="pPeriod">Временной интервал, в течение которого необходимо провести один цикл изменения частот</param>
+            /// <param name="pPeriod">Временной интервал, в течение которого необходимо провести один цикл изменения частот, мкс</param>
             /// <param name="pMHz_start">Форма профиля одно цикла: 0 - равнобедренный треугольник, 1 - прямоугольный треугольник</param>
-            private void Calculate_sweep_params_012020(float pMHz_start, float pSweep_range_MHz, double pPeriod, bool form )
+            private void Calculate_sweep_params_012020(float pMHz_start, float pSweep_range_MHz, double pPeriod_mks, bool form )
             {
                 //Принципы: делаем не меньше 25*2 шагов, если профиль - равнобедренный треугольник, и 25+1 шагов, если прямоугольный
                 //Почему? Исходя из максимальной девиации в dF = 5 МГц и максимального шага в 200 KHz. Шаг мы всегда можем сделать меньше. Но не больше.
+                //позже решил исходить из 1000 шагов. Так оказалось проще
                 int steps_min = (int)(F_deviat_max / dF_deviat_max);
                 steps_min = form ? (steps_min * 2) : (steps_min + 1);
                 double t_dev_min = dT_sweep_min * steps_min;
-                double t_dev_max = dT_sweep_min * 1000; //а вот 1000 шагов мы можем сделать всегда. Но не более.
-                if(pPeriod < t_dev_min) { //exception
+                double t_dev_max = dT_sweep_max * 1000; //а вот 1000 шагов мы можем сделать всегда. Но не более. Здесь это примерно 0,748мс
+
+                int pPeriod_ns = (int)(pPeriod_mks * 1000);
+                if (pPeriod_ns < t_dev_min || pPeriod_ns > t_dev_max)
+                { throw new Exception(); }
+
+
+                int Num_of_steps = 1000;
+                double dT_current_ns = (double)pPeriod_ns / (double)Num_of_steps;
+                while (dT_current_ns > dT_sweep_max || dT_current_ns < dT_sweep_min || Num_of_steps>= steps_min*2) //в этом цикле вычисляется количество шагов в случае, если 1000 не подходит
+                {
+                    Num_of_steps = Num_of_steps / 2;
+                    dT_current_ns = (double)pPeriod_ns / (double)Num_of_steps;
                 }
+
+                int Multiplier = (int)(dT_current_ns / dT_sweep_min);
+                int[] Freq_mass_hz;
+                if(form)
+                {
+                    if (Num_of_steps % 2 != 0) Num_of_steps += 1;
+
+                    double dFreq_step_kHz = pSweep_range_MHz * 1000 / (Num_of_steps/2);//получим шаг по частоте в kHz
+                    if (dFreq_step_kHz> dF_deviat_max) { throw new Exception(); }
+
+                    Freq_mass_hz = new int[Num_of_steps];
+                    for (int i =0;i< Num_of_steps / 2;i++)
+                    {
+                        Freq_mass_hz[i] = (int)((pMHz_start*1000 + dFreq_step_kHz*i)*1000);
+                    }
+                    for (int i = 0; i < Num_of_steps / 2; i++)
+                    {
+                        Freq_mass_hz[Num_of_steps / 2 + i] = (int)(((pMHz_start+ pSweep_range_MHz) * 1000 - dFreq_step_kHz*i) * 1000);
+                    }
+                }
+                else
+                {
+                    
+                    double dFreq_step_kHz = pSweep_range_MHz * 1000 / (Num_of_steps - 1);//получим шаг по частоте в kHz
+                    if (dFreq_step_kHz > dF_deviat_max) { throw new Exception(); }
+
+                    Freq_mass_hz = new int[Num_of_steps];
+
+                    for (int i = 0; i < Num_of_steps - 1; i++)
+                    {
+                        Freq_mass_hz[i] = (int)((pMHz_start * 1000 + dFreq_step_kHz*i) * 1000);
+                    }
+                    Freq_mass_hz[Num_of_steps-1] = (int)(((pMHz_start + pSweep_range_MHz) * 1000) * 1000);
+                }
+                //массив частот посчитан Freq_mass_hz[i] 
+                //время перестройки известно dT_current_ns //множитель известен Multiplier
+
+
 
             }
             private byte[] Create_byteMass_forSweep_012020(int[] Freq_mass_hz, int time_multiplier)
