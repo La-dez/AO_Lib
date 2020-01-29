@@ -83,6 +83,8 @@ namespace AO_Lib
                 try
                 {
                     var Data_from_dev = MiniHelp.Files.Read_txt(path);
+                    
+
                     sBit_inverse_needed = Data_from_dev[0].Contains("true") ? true : false;
                     if (Data_from_dev[0].Contains("true") || Data_from_dev[0].Contains("false")) Data_from_dev.RemoveAt(0);
                     FilterCfgPath = path;
@@ -93,7 +95,7 @@ namespace AO_Lib
                     float[] pData = new float[pWLs.Length];
                     pWLs.CopyTo(pData, 0);
                     int RealLength = pWLs.Length - 1;
-                    if (pWLs[0] - pWLs[RealLength] > 0)
+                    if (pWLs[0] - pWLs[RealLength] > 0) //если так, то меняет порядок
                     {
                         WLs = new float[pWLs.Length];
                         HZs = new float[pWLs.Length]; ;
@@ -145,7 +147,7 @@ namespace AO_Lib
                 {
                     int a = (int)distance;
                     if ((distance - a) < 1e6f)  { return HZs[a]; }
-                    else { return (float)MiniHelp.Math.Interpolate_value(WLs[a], HZs[a], WLs[a+1], HZs[a+1], pWL); }
+                    else { return (float)MiniHelp.Math.Interpolate_value(WLs[a], HZs[a], WLs[a+1], HZs[a+1], pWL); } //Проблема здесь 
                 }
                 else
                 {
@@ -1488,7 +1490,7 @@ namespace AO_Lib
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
             }
 
-            public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
+            public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мкс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
             {
                 //здесь MHz_start = m_f0 - начальна частота в МГц    
                 //Sweep_range_MHz = m_deltaf - девиация частоты в МГц
@@ -1970,6 +1972,31 @@ namespace AO_Lib
                     List<string> result = new List<string>(AllLines);
                     return result;
                 }
+                public static bool Write_txt(string path, List<string> data)
+                {
+                    bool result = false;
+                    try
+                    {
+                        string[] AllLines = new string[data.Count];
+                        data.CopyTo(AllLines);
+                        System.IO.File.WriteAllLines(path, AllLines);
+                        result = true;
+                    }
+                    catch
+                    {
+                        result = false;
+                    }
+                    return result;
+                }
+
+                public static void AddString_2file(string FileName, string str)
+                {
+                    List<string> data = new List<string>() ;
+                    try { data = Read_txt(FileName); } catch { }
+                    data.Add(str);
+                    Write_txt(FileName, data);
+                }
+
                 public static void Get_WLData_byKnownCountofNumbers(int countofnumbers, string[] AllStrings,
                out float[] pWls, out float[] pHzs, out float[] pCoefs)
                 {
@@ -2000,20 +2027,14 @@ namespace AO_Lib
                     pHzs = dHzs.ToArray();
                     pCoefs = dCoefs.ToArray();
                 }
+
+              
+
                 public static void Get_WLData_fromDevString(string datastring, int NumberOfParamsInString, float[] pPars)
                 {
                     int startindex = 0; bool startfound = false;
                     int finishindex = 0; bool finishfound = false;
                     List<float> datavalues = new List<float>();
-
-                    //Оказывается, не во всех системах все читается корректно. Делаем проверку
-                    bool isDotNeeded = false;
-                    double datastr = 0;
-                    try { datastr = Convert.ToDouble(("0.1155").Replace('.', ',')); isDotNeeded = false; }
-                    catch { isDotNeeded = true; }
-                    try { datastr = Convert.ToDouble(("0,1155").Replace(',', '.')); isDotNeeded = true; }
-                    catch { isDotNeeded = false; }
-
 
                     for (int i = 0; i < datastring.Length; i++)
                     {
@@ -2040,25 +2061,23 @@ namespace AO_Lib
                         if (startfound && finishfound)
                         {
                             string data = datastring.Substring(startindex, finishindex - startindex);
-
-
-                            datavalues.Add((float)Convert.ToDouble(data.Replace('.', ',')));
+                            double result = 0;
+                            double.TryParse((data.Replace(',', '.')),System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture,out result);
+                            datavalues.Add((float)result);
                             startfound = finishfound = false;
                         }
                     }
                     if (startfound && !finishfound)
                     {
                         string data = datastring.Substring(startindex);
-                        if (isDotNeeded)
-                            datavalues.Add((float)Convert.ToDouble(data.Replace(',', '.')));
-                        else
-                            datavalues.Add((float)Convert.ToDouble(data.Replace('.', ',')));
+                        double result = 0;
+                        double.TryParse((data.Replace(',', '.')), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out result);
+                        datavalues.Add((float)result);
                     }
                     for (int i = 0; i < NumberOfParamsInString; i++) { pPars[i] = datavalues[i]; }
                 }
 
-                public static void Get_Data_fromDevFile(string[] AllStrings,
-               out List<float[]> Colomns)
+                public static void Get_Data_fromDevFile(string[] AllStrings,  out List<float[]> Colomns)
                 {
                     List<float[]> DataRows = new List<float[]>();
                     List<float> Params = new List<float>();
