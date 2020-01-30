@@ -267,13 +267,20 @@ namespace AO_Lib
 
                 string Descriptor_forSTCFilter; uint Flag_forSTC_filter;
                 Devices_per_type[0] = STC_Filter.Search_Devices(out Descriptor_forSTCFilter, out Flag_forSTC_filter);
+#if X64
+                if (Devices_per_type[0] != 0)
+                    return (new STC_Filter(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
+                else
+                    return (new Emulator());
+#elif X86
                 Devices_per_type[1] = VNIIFTRI_Filter_v15.Search_Devices();
                 Devices_per_type[2] = VNIIFTRI_Filter_v20.Search_Devices();
                 if (Devices_per_type[0] != 0) return (new STC_Filter(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
+
                 else if (Devices_per_type[1] != 0) return (new VNIIFTRI_Filter_v15());
                 else if (Devices_per_type[2] != 0) return (new VNIIFTRI_Filter_v20());
                 else return (new Emulator());
-
+#endif
             }
         }
         public class Emulator : AO_Filter
@@ -377,6 +384,8 @@ namespace AO_Lib
                 return "Common error";
             }
         }
+
+#if X86
         public class VNIIFTRI_Filter_v15 : AO_Filter //идея: сделать 2 класса чисто на импорт, а обвязку оставить общую
         {
             public override FilterTypes FilterType { get { return FilterTypes.VNIIFTRI_Filter_v15; } }
@@ -504,7 +513,7 @@ namespace AO_Lib
                 return ((Status)pCode_of_error).ToString();
             }
 
-            #region DllFunctions
+#region DllFunctions
             public const string basepath = "aom_old.dll";
             //Назначение: функция возвращает число подключенных акустооптических фильтров.
             [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
@@ -561,7 +570,7 @@ namespace AO_Lib
                 AOM_RANGE_ERROR,
                 AOM_OTHER_ERROR
             }            
-            #endregion
+#endregion
         }
         public class VNIIFTRI_Filter_v20 : AO_Filter //идея: сделать 2 класса чисто на импорт, а обвязку оставить общую
         {
@@ -691,7 +700,7 @@ namespace AO_Lib
                 return ((Status)pCode_of_error).ToString();
             }
 
-            #region DllFunctions
+#region DllFunctions
             public const string basepath = "aom_new.dll";
             //Назначение: функция возвращает число подключенных акустооптических фильтров.
             [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
@@ -748,8 +757,10 @@ namespace AO_Lib
                 AOM_RANGE_ERROR,
                 AOM_OTHER_ERROR
             }
-            #endregion
+#endregion
         }
+#endif
+
         public class STC_Filter : AO_Filter
         {
             public override FilterTypes FilterType { get { return FilterTypes.STC_Filter; } }
@@ -1689,7 +1700,7 @@ namespace AO_Lib
                 Deinit_device();
             }
            
-            #region Перегрузки WriteUsb
+#region Перегрузки WriteUsb
             //Перегрузки, которую можно юзать
             public unsafe bool WriteUsb()
             {
@@ -1702,7 +1713,7 @@ namespace AO_Lib
             { return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort, count, Own_UsbBuf); }
             public unsafe bool WriteUsb(byte[] ByteMass,int count)
             { return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort, count, ByteMass); }
-            #endregion
+#endregion
         }
 
         private static class FTDIController_lib

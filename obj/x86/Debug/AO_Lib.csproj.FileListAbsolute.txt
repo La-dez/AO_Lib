@@ -7,3 +7,8 @@ E:\Работа Саша\АО\AO_Lib\obj\x86\Debug\AO_Lib.dll
 E:\Работа Саша\АО\AO_Lib\obj\x86\Debug\AO_Lib.pdb
 E:\Работа Саша\АО\AO_Lib\bin\x86\Debug\AO_Lib.dll
 E:\Работа Саша\АО\AO_Lib\bin\x86\Debug\AO_Lib.pdb
+D:\Dev\AO_Lib\bin\x86\Debug\AO_Lib.dll
+D:\Dev\AO_Lib\bin\x86\Debug\AO_Lib.pdb
+D:\Dev\AO_Lib\obj\x86\Debug\AO_Lib.csproj.CoreCompileInputs.cache
+D:\Dev\AO_Lib\obj\x86\Debug\AO_Lib.dll
+D:\Dev\AO_Lib\obj\x86\Debug\AO_Lib.pdb
