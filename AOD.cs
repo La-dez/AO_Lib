@@ -28,7 +28,7 @@ namespace AO_Lib
             protected abstract float[] Attenuation_1 { set; get; }
             protected abstract float[] Attenuation_2 { set; get; }
             //
-            protected abstract bool AOF_Loaded_without_fails { set; get; }
+            protected abstract bool AOD_Loaded_without_fails { set; get; }
             protected abstract bool sAOF_isPowered { set; get; }
             public virtual bool isPowered { get { return sAOF_isPowered; } }
 
@@ -59,6 +59,8 @@ namespace AO_Lib
             public uint Attenuation_2_current { get { return sAttenuation_2_current; } }
 
 
+            protected const double Reference_frequency = 350e6;
+
             //все о свипе
             protected abstract bool sAO_Sweep_On { set; get; }
             public bool is_inSweepMode { get { return sAO_Sweep_On; } }
@@ -77,7 +79,14 @@ namespace AO_Lib
 
 
             ///функционал
-
+            public virtual byte[] Create_byteMass_forFastTuneTest(float[] pFreqs,int steps=300, uint pAttenuation = 0)
+            {
+                return new byte[0];
+            }
+            public virtual int Test_fast_tune(int pSteps)
+            {
+                        return (int)FTDIController.FT_STATUS.FT_OTHER_ERROR;
+            }
             //перестройка угла
             public virtual int Set_Angle_1(float pAngle_1,uint AT1 = 0)
             {
@@ -298,6 +307,25 @@ namespace AO_Lib
                 if (Devices_per_type[0] != 0) return (new STC_Deflector(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
                 else return (new Emulator_of_Deflector());
             }
+            public static byte[] uLong_to_4bytes(ulong lvspom)
+            {
+                short MSB, LSB;
+                byte[] result = new byte[4];
+                MSB = (short)(0x0000ffFF & (lvspom >> 16));
+                LSB = (short)lvspom;
+                result[0] = (byte)(0x00ff & (MSB >> 8));
+                result[1] = (byte)(MSB);
+                result[2] = (byte)(0x00ff & (LSB >> 8));
+                result[3] = (byte)(LSB);
+                return result;
+            }
+            public static byte[] uInt_to_2bytes(ulong ivspom)
+            {
+                byte[] result = new byte[2];
+                result[0] = (byte)(0x00ff & (ivspom >> 8)); ;
+                result[1] = (byte)ivspom;
+                return result;
+            }
         }
         public class STC_Deflector : AO_Deflector
         {
@@ -315,7 +343,7 @@ namespace AO_Lib
             protected override float[] Angles_2 { set; get; }
             protected override float[] Attenuation_2 { set; get; }
 
-            protected override bool AOF_Loaded_without_fails { set; get; }
+            protected override bool AOD_Loaded_without_fails { set; get; }
             protected override bool sAOF_isPowered { set; get; }
 
             public override float Angle_Max_1 { get { return Angles_1[Angles_1.Length - 1]; } }
@@ -342,13 +370,13 @@ namespace AO_Lib
                 try
                 {
                     Init_device(number);
-                    AOF_Loaded_without_fails = true;
+                    AOD_Loaded_without_fails = true;
 
                     sAO_ProgrammMode_Ready = false;
                 }
                 catch
                 {
-                    AOF_Loaded_without_fails = false;
+                    AOD_Loaded_without_fails = false;
                 }
             }
             ~STC_Deflector()
@@ -359,7 +387,7 @@ namespace AO_Lib
 
             public override int Set_Hz_both(float pfreq_1, float pfreq_2, uint AT_1=0, uint AT_2 = 0)
             {
-                if (AOF_Loaded_without_fails)
+                if (AOD_Loaded_without_fails)
                 {
                     try
                     {
@@ -385,7 +413,7 @@ namespace AO_Lib
             }
             public int Set_Hz_both_viaByteMass(byte[] pBM,bool Is_InnerVaribles_changed=false, float pfreq_1=0, float pfreq_2=0, uint AT_1 = 0, uint AT_2 = 0)
             {
-                if (AOF_Loaded_without_fails)
+                if (AOD_Loaded_without_fails)
                 {
                     try
                     {                      
@@ -532,7 +560,7 @@ namespace AO_Lib
 
                     freq = (float)(((pMHz_start) * 1e6f + i * Step_HZs)/*/ 1.17f*/);//1.17 коррекция частоты
                                                                                     //fvspom=freq/300e6;
-                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / 350e6)); //расчет управляющего слова для частоты
+                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / Reference_frequency)); //расчет управляющего слова для частоты
                     MSB = (short)(0x0000ffFF & (lvspom >> 16));
                     LSB = (short)lvspom;
                     data_Own_UsbBuf[pcount + 1] = (byte)(0x00ff & (MSB >> 8));
@@ -597,7 +625,7 @@ namespace AO_Lib
                         freq = (float)(((pfreq) * 1e6f)/* / 1.17f*/);//1.17 коррекция частоты
 
 
-                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / 350e6)); //расчет управляющего слова для частоты
+                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / Reference_frequency)); //расчет управляющего слова для частоты
                     MSB = (short)(0x0000ffFF & (lvspom >> 16));
                     LSB = (short)lvspom;
                     data_Own_UsbBuf[pcount + 1] = (byte)(0x00ff & (MSB >> 8));
@@ -660,7 +688,7 @@ namespace AO_Lib
 
                     freq = (float)(((pMHz_start) * 1e6f + i * Step_HZs) /*/ 1.17f*/);//1.17 коррекция частоты
                                                                                      //fvspom=freq/300e6;
-                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / 350e6)); //расчет управляющего слова для частоты
+                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / Reference_frequency)); //расчет управляющего слова для частоты
                     MSB = (short)(0x0000ffFF & (lvspom >> 16));
                     LSB = (short)lvspom;
                     data_Own_UsbBuf[pcount + 1] = (byte)(0x00ff & (MSB >> 8));
@@ -697,6 +725,7 @@ namespace AO_Lib
                 }
                 return data_Own_UsbBuf;
             }
+
             private byte[] Create_byteMass_forSweep(float pMHz_start, float pSweep_range_MHz, double pPeriod/*[мс с точностью до двух знаков,минимум 1]*/, ref int pcount)
             {
                 float freq, fvspom;
@@ -729,7 +758,7 @@ namespace AO_Lib
 
                     freq = (float)(((pMHz_start) * 1e6f + i * Step_HZs)/*/ 1.17f*/);//1.17 коррекция частоты
                                                                                     //fvspom=freq/300e6;
-                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / 350e6)); //расчет управляющего слова для частоты
+                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / Reference_frequency)); //расчет управляющего слова для частоты
                     MSB = (short)(0x0000ffFF & (lvspom >> 16));
                     LSB = (short)lvspom;
                     data_Own_UsbBuf[pcount + 1] = (byte)(0x00ff & (MSB >> 8));
@@ -800,11 +829,11 @@ namespace AO_Lib
                 pfreq_1 = ((freq_was_1) * 1e6f); //in Hz
                 pfreq_2 = ((freq_was_2) * 1e6f); //in Hz
 
-                fvspom_1 = pfreq_1 / 350e6f;
-                fvspom_2 = pfreq_2 / 350e6f;
+                fvspom_1 = (float)(pfreq_1 / Reference_frequency);
+                fvspom_2 = (float)(pfreq_2 / Reference_frequency);
 
-                lvspom_1 = (ulong)((pfreq_1) * (Math.Pow(2.0, 32.0) / 350e6));//правый
-                lvspom_2 = (ulong)((pfreq_2) * (Math.Pow(2.0, 32.0) / 350e6));//левый
+                lvspom_1 = (ulong)((pfreq_1) * (Math.Pow(2.0, 32.0) / Reference_frequency));//правый
+                lvspom_2 = (ulong)((pfreq_2) * (Math.Pow(2.0, 32.0) / Reference_frequency));//левый
 
                 MSB_1 = (short)(0x0000ffFF & (lvspom_1 >> 16));
                 LSB_1 = (short)lvspom_1;
@@ -835,6 +864,78 @@ namespace AO_Lib
                 }
                 return data_Own_UsbBuf;
             }
+            
+            public override byte[] Create_byteMass_forFastTuneTest(float[] pFreqs,int steps=300,uint pAttenuation = 0)
+            {
+                ulong lvspom_1;
+                float pfreq_1;
+                uint ivspom_1 = 3600;
+
+                byte[] data_Buf = new byte[7];
+                byte[] data_Own_UsbBuf = new byte[7* steps];
+
+                for (int i =0;i< steps; i++)
+                {
+                    data_Buf = new byte[7];
+
+                    pfreq_1 = pFreqs[i];
+                    ivspom_1 = pAttenuation;
+                    
+                    if (ivspom_1 == 0)  ivspom_1 = (uint)Get_Intensity_via_HZ(pfreq_1, 0); //Attenuation calculating
+                    //check this
+                   /* if (ivspom_1 < 2500) ivspom_1 = 2500;
+                    if (ivspom_1 > 4000) ivspom_1 = 4000;*/
+
+
+                    pfreq_1 = ((pfreq_1) * 1e6f); //in Hz //Frequency calculating
+                    lvspom_1 = (ulong)((pfreq_1) * (Math.Pow(2.0, 32.0) / Reference_frequency));
+
+                    data_Buf[0] = (byte)0x03; 
+
+                    var datamass_hz = uLong_to_4bytes(lvspom_1);
+                    for (int j = 0; j < 4; j++) data_Buf[j + 1] = datamass_hz[j];
+
+                    var datamass_at = uInt_to_2bytes(ivspom_1);
+                    for (int j = 0; j < 2; j++) data_Buf[j + 5] = datamass_at[j];
+
+                    for (int j = 0; j < 7; j++)
+                        data_Buf[j] = (byte)AO_Devices.FTDIController.Bit_reverse(data_Buf[j]);
+
+                    for (int j = 0;j<7;j++)
+                        data_Own_UsbBuf[7 * i + j] = data_Buf[j];
+                }
+                return data_Own_UsbBuf;
+            }
+            public override int Test_fast_tune(int pSteps)
+            {
+                if (AOD_Loaded_without_fails)
+                {
+                    try
+                    {
+                        
+                        int steps = pSteps;
+                        float[] freq_mass = new float[steps];
+                        float delta = (HZ_Max_1 - HZ_Min_1) / (steps == 1 ? steps : (steps - 1));
+                        for (int i=0;i<steps;i++)
+                        {
+                            freq_mass[i] = HZ_Min_1 + delta * i;
+                        }
+                        Own_UsbBuf = new byte[steps * 7];
+                        Own_UsbBuf = Create_byteMass_forFastTuneTest(freq_mass,pSteps,1900);
+                        WriteUsb(steps * 7);
+                        return (int)FTDIController.FT_STATUS.FT_OK;
+                    }
+                    catch (Exception exc)
+                    {
+                        return (int)FTDIController.FT_STATUS.FT_OTHER_ERROR;
+                    }
+                }
+                else
+                {
+                    return (int)FTDIController.FT_STATUS.FT_DEVICE_NOT_FOUND;
+                }
+            }
+
             public int Set_ProgrammMode_on()
             {
                 try
@@ -1064,7 +1165,7 @@ namespace AO_Lib
             protected override float[] Angles_2 { set; get; }
             protected override float[] Attenuation_2 { set; get; }
 
-            protected override bool AOF_Loaded_without_fails { set; get; }
+            protected override bool AOD_Loaded_without_fails { set; get; }
             protected override bool sAOF_isPowered { set; get; }
 
             public override float Angle_Max_1 { get { return Angles_1[Angles_1.Length - 1]; } }
@@ -1076,6 +1177,7 @@ namespace AO_Lib
             public override float HZ_Max_2 { get { return HZs_2[0]; } }
             public override float HZ_Min_2 { get { return HZs_2[HZs_2.Length - 1]; } }
 
+           
             protected override bool sAO_Sweep_On { set; get; }
             protected override bool sAO_ProgrammMode_Ready { set; get; }
 
@@ -1086,7 +1188,7 @@ namespace AO_Lib
 
             public Emulator_of_Deflector()
             {
-               AOF_Loaded_without_fails = true;
+               AOD_Loaded_without_fails = true;
                sAO_ProgrammMode_Ready = false;
             }
             ~Emulator_of_Deflector()
@@ -1097,7 +1199,7 @@ namespace AO_Lib
 
             public override int Set_Hz_both(float pfreq_1, float pfreq_2,uint AT_1=0,uint AT_2 = 0)
             {
-                if (AOF_Loaded_without_fails)
+                if (AOD_Loaded_without_fails)
                 {
                     try
                     {
@@ -1154,7 +1256,7 @@ namespace AO_Lib
 
                     freq = (float)(((pMHz_start) * 1e6f + i * Step_HZs)/*/ 1.17f*/);//1.17 коррекция частоты
                                                                                     //fvspom=freq/300e6;
-                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / 350e6)); //расчет управляющего слова для частоты
+                    lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / Reference_frequency)); //расчет управляющего слова для частоты
                     MSB = (short)(0x0000ffFF & (lvspom >> 16));
                     LSB = (short)lvspom;
                     data_Own_UsbBuf[pcount + 1] = (byte)(0x00ff & (MSB >> 8));
@@ -1217,11 +1319,11 @@ namespace AO_Lib
                 pfreq_1 = ((freq_was_1) * 1e6f); //in Hz
                 pfreq_2 = ((freq_was_2) * 1e6f); //in Hz
 
-                fvspom_1 = pfreq_1 / 300e6f;
-                fvspom_2 = pfreq_2 / 300e6f;
+                fvspom_1 = (float)(pfreq_1 / Reference_frequency);
+                fvspom_2 = (float)(pfreq_2 / Reference_frequency);
 
-                lvspom_1 = (ulong)((pfreq_1) * (Math.Pow(2.0, 32.0) / 300e6));
-                lvspom_2 = (ulong)((pfreq_2) * (Math.Pow(2.0, 32.0) / 300e6));
+                lvspom_1 = (ulong)((pfreq_1) * (Math.Pow(2.0, 32.0) / Reference_frequency));
+                lvspom_2 = (ulong)((pfreq_2) * (Math.Pow(2.0, 32.0) / Reference_frequency));
 
                 MSB_1 = (short)(0x0000ffFF & (lvspom_1 >> 16));
                 LSB_1 = (short)lvspom_1;
@@ -1330,7 +1432,7 @@ namespace AO_Lib
             {
                 Deinit_device();
             }
-
+            
             #region Перегрузки WriteUsb
             //Перегрузки, которую можно юзать
             public unsafe bool WriteUsb()
@@ -1515,13 +1617,13 @@ namespace AO_Lib
             public static int Bit_reverse(int input)
             {
                 int output = 0;
-                const int uchar_size = 8;
+               /* const int uchar_size = 8;
 
                 for (int i = 0; i != uchar_size; ++i)
                 {
                     output |= ((input >> i) & 1) << (uchar_size - 1 - i);
-                }
-                //output = input;
+                }*/
+                output = input;
                 return output;
             }
 

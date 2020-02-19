@@ -267,20 +267,22 @@ namespace AO_Lib
 
                 string Descriptor_forSTCFilter; uint Flag_forSTC_filter;
                 Devices_per_type[0] = STC_Filter.Search_Devices(out Descriptor_forSTCFilter, out Flag_forSTC_filter);
+                AO_Filter retFil = null;
 #if X64
                 if (Devices_per_type[0] != 0)
-                    return (new STC_Filter(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
+                    retFil =  (new STC_Filter(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
                 else
-                    return (new Emulator());
+                    retFil =  (new Emulator());
 #elif X86
                 Devices_per_type[1] = VNIIFTRI_Filter_v15.Search_Devices();
                 Devices_per_type[2] = VNIIFTRI_Filter_v20.Search_Devices();
-                if (Devices_per_type[0] != 0) return (new STC_Filter(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
+                if (Devices_per_type[0] != 0) retFil =  (new STC_Filter(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
 
-                else if (Devices_per_type[1] != 0) return (new VNIIFTRI_Filter_v15());
-                else if (Devices_per_type[2] != 0) return (new VNIIFTRI_Filter_v20());
-                else return (new Emulator());
+                else if (Devices_per_type[1] != 0) retFil =  (new VNIIFTRI_Filter_v15());
+                else if (Devices_per_type[2] != 0) retFil =  (new VNIIFTRI_Filter_v20());
+                else retFil =  (new Emulator());
 #endif
+                return retFil;
             }
         }
         public class Emulator : AO_Filter
