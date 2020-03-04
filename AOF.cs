@@ -60,8 +60,6 @@ namespace AO_Lib
             public abstract int Set_Wl(float pWL);
             public abstract int Set_Hz(float freq);
 
-            public abstract int Set_OutputPower(byte percentage);
-
             public abstract int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat);
            /* {
                 sAO_Sweep_On = true;
@@ -355,10 +353,6 @@ namespace AO_Lib
             {
                 return "(any *.dev file) | EMULATOR" ;
             }
-            public override int Set_OutputPower(byte percentage)
-            {
-                return 0;
-            }
             
             public override int PowerOn()
             {
@@ -458,10 +452,6 @@ namespace AO_Lib
                 StringBuilder dev_name = new StringBuilder(7);
                 AOM_GetID(dev_name);
                 return dev_name.ToString();
-            }
-            public override int Set_OutputPower(byte percentage)
-            {
-                return -1;
             }
             public override int Read_dev_file(string path)
             {
@@ -645,10 +635,7 @@ namespace AO_Lib
                 AOM_GetID(dev_name);
                 return dev_name.ToString();
             }
-            public override int Set_OutputPower(byte percentage)
-            {
-                return -1;
-            }
+
             public override int Read_dev_file(string path)
             {
                 float min = 0, max = 0;
@@ -984,7 +971,8 @@ namespace AO_Lib
             /// <summary>
             /// Программируемый режим. Реализован не на всех типах АО (21.01.2020). 
             /// Формирует байтовый массив по заданным параметрам для активации программируемого режима
-            /// </summary>          
+            /// </summary>        
+            [Obsolete]
             public void Create_byteMass_forProgramm_mode(float[,] pAO_All_CurveSweep_Params)
             {
                 // TODO: прописать описание входного массива.
@@ -1076,6 +1064,7 @@ namespace AO_Lib
             /// <summary>
             /// Программируемый режим. Формирует часть массива байт, связанных со свипом.
             /// </summary>        
+            [Obsolete]
             private byte[] Create_byteMass_forProgrammMode_Sweep(float pMHz_start, float pSweep_range_MHz /*не менее 1МГц*/, double pPeriod/*[мс с точностью до двух знаков,минимум 1]*/, ref int pcount)
             {
                 float freq, fvspom;
@@ -1148,6 +1137,7 @@ namespace AO_Lib
             /// <summary>
             /// Программируемый режим. Формирует часть массива байт, связанных со обычной перестройкой.
             /// </summary>  
+            [Obsolete]
             private byte[] Create_byteMass_forProgrammMode_HZTune(float pfreq, double pPeriod/*[мс с точностью до двух знаков,минимум 1]*/, ref int pcount)
             {
                 float freq, fvspom;
@@ -1213,6 +1203,7 @@ namespace AO_Lib
             /// <summary>
             /// Программируемый режим. Активирует программируемый режим.
             /// </summary>  
+            [Obsolete]
             public int Set_ProgrammMode_on()
             {
                 try
@@ -1226,13 +1217,15 @@ namespace AO_Lib
             /// <summary>
             /// Программируемый режим. Деактивирует программируемый режим. Устанавливается центральная частота.
             /// </summary>  
+            ///
+            [Obsolete]
             public int Set_ProgrammMode_off()
             {
 
               //  is_Programmed = false;
                 return Set_Hz((HZ_Max + HZ_Min) / 2.0f);
             }
-
+            [Obsolete]
             private byte[] Create_byteMass_forSweep(float pMHz_start, float pSweep_range_MHz, double pPeriod/*[мс с точностью до двух знаков,минимум 1]*/, ref int pcount)
             {
                 float freq, fvspom;
@@ -1436,73 +1429,6 @@ namespace AO_Lib
                 return result;
             }
 
-            public/* override */int Set_Sweep_on_test(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
-            {
-                //здесь MHz_start = m_f0 - начальна частота в МГц    
-                //Sweep_range_MHz = m_deltaf - девиация частоты в МГц
-                try
-                {
-
-                    float freq, fvspom;
-                    short MSB, LSB;
-                    ulong lvspom;
-                    byte[] tx = new byte[5000];
-                    uint ivspom;
-                    float delta;
-                    int steps, count;
-                    int i, j; float freqMCU = 74.99e6f;
-
-                    float inp_freq = 5000; //in Hz, max 5000Hz
-                    count = 4;
-                    //steps=(float)m_deltaf*5;
-                    tx[0] = 0x14;
-                    tx[1] = 0x11;
-                    tx[2] = 0x12; //it means, we will send wavelength
-                    tx[3] = 0xff; //repeat cont
-                    for (i = 4; i < 5000; i++)
-                    {
-                        tx[i] = 0;
-                    }
-                    for (j = 1; j <= 2; j++)
-                    {
-                        //timer calculations
-                        ivspom = (uint)(65536 - freqMCU / (2 * 2 * inp_freq));
-                        tx[count] = (byte)(0x00ff & (ivspom >> 8)); count++;    //timer calculations and bytes
-                        tx[count] = (byte)(ivspom); count++;                    //timer calculations and bytes
-                        for (i = 0; i < 20; i++)
-                        {
-                            freq = (float)((60 +30*j) * 1e6 + i * 2e5); //in Hz
-                            lvspom = (ulong)((freq) * (Math.Pow(2.0, 32.0) / 350e6));
-                            MSB = (short)(0x0000ffFF & (lvspom >> 16));
-                            LSB = (short)lvspom;
-                            tx[count] = (byte)(0x00ff & (MSB >> 8));
-                            tx[count + 1] = (byte)(MSB);
-                            tx[count + 2] = (byte)(0x00ff & (LSB >> 8));
-                            tx[count + 3] = (byte)(LSB);
-                            count += 4;
-                        }
-                    }
-                    tx[count] = 0x15;
-                    tx[++count] = 0x15;
-                    tx[++count] = 0x15;
-                    //count+=3;
-                    for (i = 0; i < 5000; i++)
-                    {
-                        tx[i] = (byte)FTDIController_lib.Bit_reverse(tx[i], false);
-                    }
-                    FTDIController_lib.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                    FTDIController_lib.FT_Purge(Own_m_hPort, FTDIController_lib.FT_PURGE_RX | FTDIController_lib.FT_PURGE_TX); // Purge(FT_PURGE_RX || FT_PURGE_TX);
-                    FTDIController_lib.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                    try
-                    {
-                        WriteUsb(tx, count+1);
-                        return 0;
-                    }
-                    catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
-                }
-                catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
-            }
-
             public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мкс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
             {
                 //здесь MHz_start = m_f0 - начальна частота в МГц    
@@ -1537,33 +1463,7 @@ namespace AO_Lib
             public override int Set_Sweep_off()
             {
                 return Set_Hz(HZ_Current);
-               /* try
-                {
-                    //DWORD ret_bytes;
-                    Own_UsbBuf[0] = 0x0a;
-                    Own_UsbBuf[0] = (byte)AO_Devices.FTDIController.Bit_reverse(Own_UsbBuf[0]);
 
-                    try { WriteUsb(1); }
-                    catch { return (int)FTDIController.FT_STATUS.FT_IO_ERROR; }
-                    PowerOff();
-                }
-                catch { return (int)FTDIController.FT_STATUS.FT_OTHER_ERROR; }
-                sAO_Sweep_On = false;
-                return (int)FTDIController.FT_STATUS.FT_OK;*/
-
-            }
-
-            public override int Set_OutputPower(byte Percentage)
-            {
-                try
-                {
-                    Own_UsbBuf[0] = 0x09; //it means, we will send off command
-                    Own_UsbBuf[1] = Percentage;
-                    try { WriteUsb(2); }
-                    catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
-                }
-                catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
-                return 0;
             }
 
             protected override int Init_device(uint number)
@@ -1599,7 +1499,7 @@ namespace AO_Lib
                 {
                     return (int)ftStatus;
                 }
-                Own_UsbBuf[0] = 0x66;
+                Own_UsbBuf[0] = 0x66;//пересылаем тестовый байт
                 try { WriteUsb(1); }
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
                 return 0;
