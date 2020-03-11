@@ -786,6 +786,13 @@ namespace AO_Lib
             private UInt32 Own_m_hPort = 0;
             public override bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
 
+            public static class MainCommands
+            {
+                public static byte SET_HZ { get { return 0x03; } }
+                public static byte TEST { get { return 0x66; } }
+                public static byte POWER_OFF { get { return 0x05; } }
+                public static byte USER_CURVE { get { return 0xC0; } }
+            }
             /// <summary>
             /// Конструктор. Инициализирует экземляр класса по номеру (и дескриптору) физического АО фильтра
             /// </summary>
@@ -950,7 +957,7 @@ namespace AO_Lib
                 MSB = (short)(0x0000ffFF & (lvspom >> 16));
                 LSB = (short)lvspom;
 
-                data_Own_UsbBuf[0] = 0x03; //it means, we will send wavelength
+                data_Own_UsbBuf[0] = MainCommands.SET_HZ; //it means, we will send wavelength
 
                 data_Own_UsbBuf[1] = (byte)(0x00ff & (MSB >> 8));
                 data_Own_UsbBuf[2] = (byte)MSB;
@@ -1383,7 +1390,7 @@ namespace AO_Lib
                 int totalcount = 1 + 2 + 4 * Freq_mass_hz.Length + 2;
                 //1 байт на стартовую команду, 2 - на обозначение длины, 4 на каждую частоту, 2 на множитель ramp
                 byte[] data_Own_UsbBuf = new byte[totalcount];
-                data_Own_UsbBuf[0] = 0xC0;
+                data_Own_UsbBuf[0] = MainCommands.USER_CURVE; //стартовый байт для перестройки по заданной кривой частот.
 
                 byte[] data_L = uInt_to_2bytes((uint)(4 * Freq_mass_hz.Length + 2));
                 data_Own_UsbBuf[1] = data_L[0];
@@ -1499,7 +1506,7 @@ namespace AO_Lib
                 {
                     return (int)ftStatus;
                 }
-                Own_UsbBuf[0] = 0x66;//пересылаем тестовый байт
+                Own_UsbBuf[0] = MainCommands.TEST;//пересылаем тестовый байт
                 try { WriteUsb(1); }
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
                 return 0;
@@ -1585,7 +1592,7 @@ namespace AO_Lib
                 try
                 {
                     System.Threading.Thread.Sleep(300);
-                    Own_UsbBuf[0] = 0x05; //it means, we will send off command
+                    Own_UsbBuf[0] = MainCommands.POWER_OFF; //it means, we will send off command
                     
                     for (int i = 1; i < 2; i++) Own_UsbBuf[i] = 0;
                     Own_UsbBuf[0] = (byte)FTDIController_lib.Bit_reverse(Own_UsbBuf[0], Bit_inverse_needed);
