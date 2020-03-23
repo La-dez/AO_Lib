@@ -144,7 +144,7 @@ namespace AO_Lib
                 if ((distance < (WLs.Length)) && (distance >= 0))
                 {
                     int a = (int)distance;
-                    if ((distance - a) < 1e6f)  { return HZs[a]; }
+                    if ((distance - a) < 0.0001f)  { return HZs[a]; }
                     else { return (float)MiniHelp.Math.Interpolate_value(WLs[a], HZs[a], WLs[a+1], HZs[a+1], pWL); } //Проблема здесь 
                 }
                 else

@@ -13,3 +13,9 @@ D:\Работа\Программы (мои разработки)\Спектро�
 D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\Debug\AO_Lib.csprojResolveAssemblyReference.cache
 D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\Debug\AO_Lib.dll
 D:\Работа\Программы (мои разработки)\Спектрометры\AO_comb_3\AO_Lib\obj\Debug\AO_Lib.pdb
+E:\Работа Саша\АО\AO_Lib\bin\Debug\AO_Lib.dll
+E:\Работа Саша\АО\AO_Lib\bin\Debug\AO_Lib.pdb
+E:\Работа Саша\АО\AO_Lib\obj\Debug\AO_Lib.csprojAssemblyReference.cache
+E:\Работа Саша\АО\AO_Lib\obj\Debug\AO_Lib.csproj.CoreCompileInputs.cache
+E:\Работа Саша\АО\AO_Lib\obj\Debug\AO_Lib.dll
+E:\Работа Саша\АО\AO_Lib\obj\Debug\AO_Lib.pdb
