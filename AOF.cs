@@ -36,7 +36,7 @@ namespace AO_Lib
             protected virtual float sWL_Current { set; get; }
             public float WL_Current { get { return sWL_Current; } }
             public float HZ_Current { get { return sHZ_Current; } }
-      
+
 
             //все о свипе
             protected abstract bool sAO_Sweep_On { set; get; }
@@ -57,8 +57,18 @@ namespace AO_Lib
             //функционал
 
             //перестройка ДВ пропускания
-            public abstract int Set_Wl(float pWL);
-            public abstract int Set_Hz(float freq);
+            public virtual int Set_Wl(float pWL)
+            {
+                if ((pWL > WL_Max) || (pWL < WL_Min))
+                    throw new Exception(String.Format("Unable to set this wavelenght. Please, enter the wavelenght value in {0} - {1} nm range.", WL_Min, WL_Max));
+                else return 0;
+            }
+            public virtual int Set_Hz(float freq)
+            {
+                if ((freq > HZ_Max) || (freq < HZ_Min))
+                    throw new Exception(String.Format("Unable to set this wavelenght. Please, enter the ultrasound frequency value in {0} - {1} MHz range.", HZ_Min, HZ_Max));
+                else return 0;
+            }
 
             public abstract int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat);
            /* {
@@ -320,12 +330,14 @@ namespace AO_Lib
             }
             public override int Set_Wl(float pWL)
             {
+                base.Set_Wl(pWL);
                 sWL_Current = pWL;
                 sHZ_Current = Get_HZ_via_WL(pWL);
                 return 0;
             }
             public override int Set_Hz(float freq)
             {
+                base.Set_Hz(freq);
                 sWL_Current = Get_WL_via_HZ(freq);
                 sHZ_Current = freq;
                 return 0;
@@ -418,12 +430,14 @@ namespace AO_Lib
 
             public override int Set_Wl(float pWL)
             {
+                base.Set_Wl(pWL);
                 sWL_Current = pWL;
                 sHZ_Current = Get_HZ_via_WL(pWL);
                 return AOM_SetWL(pWL);
             }
             public override int Set_Hz(float freq)
             {
+                base.Set_Hz(freq);
                 sWL_Current = Get_WL_via_HZ(freq);
                 sHZ_Current = freq;
                 return AOM_SetWL((int)Math.Round(sWL_Current));
@@ -600,12 +614,14 @@ namespace AO_Lib
 
             public override int Set_Wl(float pWL)
             {
+                base.Set_Wl(pWL);
                 sWL_Current = pWL;
                 sHZ_Current = Get_HZ_via_WL(pWL);
                 return AOM_SetWL(pWL);
             }
             public override int Set_Hz(float freq)
             {
+                base.Set_Hz(freq);
                 sWL_Current = Get_WL_via_HZ(freq);
                 sHZ_Current = freq;
                 return AOM_SetWL((int)Math.Round(sWL_Current));
@@ -827,6 +843,7 @@ namespace AO_Lib
             /// </summary>
             public override int Set_Wl(float pWL)
             {
+                base.Set_Wl(pWL);
                 if (AOF_Loaded_without_fails)
                 {
                     try
@@ -852,6 +869,7 @@ namespace AO_Lib
             /// </summary>
             public override int Set_Hz(float freq)
             {
+                base.Set_Hz(freq);
                 if (AOF_Loaded_without_fails)
                 {
                     try

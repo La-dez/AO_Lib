@@ -15,3 +15,4 @@ E:\Работа Саша\АО\AO_Lib\bin\x86\Release\AO_Lib.pdb
 E:\Работа Саша\АО\AO_Lib\obj\x86\Release\AO_Lib.csproj.CoreCompileInputs.cache
 E:\Работа Саша\АО\AO_Lib\obj\x86\Release\AO_Lib.dll
 E:\Работа Саша\АО\AO_Lib\obj\x86\Release\AO_Lib.pdb
+E:\Работа Саша\АО\AO_Lib\obj\x86\Release\AO_Lib.csprojAssemblyReference.cache
