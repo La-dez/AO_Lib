@@ -75,7 +75,7 @@ namespace AO_Lib
             //функционал
             protected AO_Filter()
             {
-                InitTimer(MS_delay_default);
+                //InitTimer(MS_delay_default);
             }
             public void InitTimer(int ms_delay)
             {
