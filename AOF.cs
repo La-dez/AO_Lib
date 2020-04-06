@@ -49,24 +49,121 @@ namespace AO_Lib
             public virtual float AO_TimeDeviation_Max { get { return 40; } } // [мс]
             public virtual float AO_FreqDeviation_Min { get { return 0.5f; } } // [МГц]
             public virtual float AO_FreqDeviation_Max { get { return 5.0f; } }// [МГц]
+
             public virtual bool Bit_inverse_needed { get { return false; } }
             protected virtual bool sBit_inverse_needed { set; get; }
             //все о программируемой перестройке
             protected abstract bool sAO_ProgrammMode_Ready { set; get; }
             public bool is_Programmed { get { return sAO_ProgrammMode_Ready; } }
-            //функционал
 
+            //поля для реализации специальной задержки между перестройками
+            public virtual int MS_delay { get; protected set; }// [мс]
+            public virtual int MS_delay_default { get { return 20; } }// [мс]
+            public virtual int MS_delay_min { get { return 1; } }// [мс]
+            public virtual int MS_delay_max { get { return 2000; } }// [мс]
+            protected virtual System.Timers.Timer InnerTimer { set; get; }
+            protected virtual float datavalue_2set { set; get; }
+            protected virtual bool IsReady2set { set; get; }
+            protected virtual bool WasLastSetting { set; get; }
+            protected virtual Action<float> ActionOfSetting { set; get; }
+
+            //события
+            public delegate void SetNotifier(AO_Filter sender,float WL_now,float HZ_now);
+            public abstract event SetNotifier onSetWl;
+            public abstract event SetNotifier onSetHz;
+
+            //функционал
+            protected AO_Filter()
+            {
+                InitTimer(MS_delay_default);
+            }
+            public void InitTimer(int ms_delay)
+            {
+                // Create a timer with a two second interval.
+                if ((ms_delay < MS_delay_min) || (ms_delay > MS_delay_max)) MS_delay = MS_delay_default;
+                else MS_delay = ms_delay;
+                InnerTimer?.Dispose();
+                InnerTimer = null;
+                InnerTimer = new System.Timers.Timer(ms_delay);
+                // Hook up the Elapsed event for the timer. 
+                InnerTimer.Elapsed += OnElapedEvent;
+                InnerTimer.AutoReset = true;
+                InnerTimer.Stop();
+
+                IsReady2set = true;
+                WasLastSetting = false;
+            }
+            public void DeinitTimer()
+            {
+                InnerTimer.Dispose();
+                InnerTimer = null;
+            }
+            
+            protected virtual void OnElapedEvent(Object source, System.Timers.ElapsedEventArgs e)
+            {
+                /*  Console.WriteLine("The Elapsed event was raised at {0:HH:mm:ss.fff}",
+                                    e.SignalTime);*/
+                IsReady2set = true;
+                InnerTimer.Stop();
+                if (!WasLastSetting)
+                {
+                    ActionOfSetting(datavalue_2set);
+                    IsReady2set = false;
+                    InnerTimer.Start();
+                }
+                else
+                {
+                    IsReady2set = true;
+                }
+                WasLastSetting = true;
+            }
             //перестройка ДВ пропускания
             public virtual int Set_Wl(float pWL)
             {
                 if ((pWL > WL_Max) || (pWL < WL_Min))
                     throw new Exception(String.Format("Unable to set this wavelenght. Please, enter the wavelenght value in {0} - {1} nm range.", WL_Min, WL_Max));
+                else if (InnerTimer != null)
+                {
+                    if (!IsReady2set)
+                    {
+                        datavalue_2set = pWL;
+                        WasLastSetting = false;
+                        ActionOfSetting = new Action<float>((x) => { Set_Wl(x); });
+                        if (!InnerTimer.Enabled) InnerTimer.Start();
+                        throw new Exception(String.Format("Too fast setting! Setting timeout is {0} ms. Wavelenght of {1} nm will be set automatically after timeout.", MS_delay, pWL));
+                    }
+                    else
+                    {
+                        InnerTimer.Start();
+                        IsReady2set = false;
+                        WasLastSetting = true;
+                        return 0;
+                    }
+                }
                 else return 0;
             }
             public virtual int Set_Hz(float freq)
             {
                 if ((freq > HZ_Max) || (freq < HZ_Min))
                     throw new Exception(String.Format("Unable to set this wavelenght. Please, enter the ultrasound frequency value in {0} - {1} MHz range.", HZ_Min, HZ_Max));
+                else if (InnerTimer != null)
+                {
+                    if (!IsReady2set)
+                    {
+                        datavalue_2set = freq;
+                        WasLastSetting = false;
+                        ActionOfSetting = new Action<float>((x) => { Set_Hz(x); });
+                        if (!InnerTimer.Enabled) InnerTimer.Start();
+                        throw new Exception(String.Format("Too fast setting! Setting timeout is {0} ms. Ultrasound frequency of {1} MHz will be set automatically after timeout.", MS_delay, freq));
+                    }
+                    else
+                    {
+                        InnerTimer.Start();
+                        IsReady2set = false;
+                        WasLastSetting = true;
+                        return 0;
+                    }
+                }
                 else return 0;
             }
 
@@ -319,8 +416,11 @@ namespace AO_Lib
 
             public override bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
 
-            public Emulator()
-            {
+            public override event SetNotifier onSetWl;
+            public override event SetNotifier onSetHz;
+
+            public Emulator() : base()
+            {               
                 sAO_ProgrammMode_Ready = false;
             }
             ~Emulator()
@@ -333,6 +433,7 @@ namespace AO_Lib
                 base.Set_Wl(pWL);
                 sWL_Current = pWL;
                 sHZ_Current = Get_HZ_via_WL(pWL);
+                onSetWl?.Invoke(this,WL_Current,HZ_Current);
                 return 0;
             }
             public override int Set_Hz(float freq)
@@ -340,6 +441,7 @@ namespace AO_Lib
                 base.Set_Hz(freq);
                 sWL_Current = Get_WL_via_HZ(freq);
                 sHZ_Current = freq;
+                onSetHz?.Invoke(this,WL_Current, HZ_Current);
                 return 0;
             }
             public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat)
@@ -417,7 +519,10 @@ namespace AO_Lib
             protected override bool sAO_Sweep_On { set; get; }
             protected override bool sAO_ProgrammMode_Ready { set; get; }
 
-            public VNIIFTRI_Filter_v15()
+            public override event SetNotifier onSetWl;
+            public override event SetNotifier onSetHz;
+
+            public VNIIFTRI_Filter_v15() : base()
             {
                 Init_device(0);
                 sAO_ProgrammMode_Ready = false;
@@ -433,14 +538,18 @@ namespace AO_Lib
                 base.Set_Wl(pWL);
                 sWL_Current = pWL;
                 sHZ_Current = Get_HZ_via_WL(pWL);
-                return AOM_SetWL(pWL);
+                int code =  AOM_SetWL(pWL);
+                onSetWl?.Invoke(this, WL_Current, HZ_Current);
+                return code;
             }
             public override int Set_Hz(float freq)
             {
                 base.Set_Hz(freq);
                 sWL_Current = Get_WL_via_HZ(freq);
                 sHZ_Current = freq;
-                return AOM_SetWL((int)Math.Round(sWL_Current));
+                int code = AOM_SetWL((int)Math.Round(sWL_Current));
+                onSetHz?.Invoke(this, WL_Current, HZ_Current);
+                return code;
             }
             public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat)
             {
@@ -601,7 +710,10 @@ namespace AO_Lib
             protected override bool sAO_Sweep_On { set; get; }
             protected override bool sAO_ProgrammMode_Ready { set; get; }
 
-            public VNIIFTRI_Filter_v20()
+            public override event SetNotifier onSetWl;
+            public override event SetNotifier onSetHz;
+
+            public VNIIFTRI_Filter_v20() : base()
             {
                 Init_device(0);
                 sAO_ProgrammMode_Ready = false;
@@ -617,14 +729,18 @@ namespace AO_Lib
                 base.Set_Wl(pWL);
                 sWL_Current = pWL;
                 sHZ_Current = Get_HZ_via_WL(pWL);
-                return AOM_SetWL(pWL);
+                int code =  AOM_SetWL(pWL);
+                onSetWl?.Invoke(this, WL_Current, HZ_Current);
+                return code;
             }
             public override int Set_Hz(float freq)
             {
                 base.Set_Hz(freq);
                 sWL_Current = Get_WL_via_HZ(freq);
                 sHZ_Current = freq;
-                return AOM_SetWL((int)Math.Round(sWL_Current));
+                int code = AOM_SetWL((int)Math.Round(sWL_Current));
+                onSetHz?.Invoke(this, WL_Current, HZ_Current);
+                return code;
             }
             public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat)
             {
@@ -802,6 +918,9 @@ namespace AO_Lib
             private UInt32 Own_m_hPort = 0;
             public override bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
 
+            public override event SetNotifier onSetWl;
+            public override event SetNotifier onSetHz;
+
             public static class MainCommands
             {
                 public static byte SET_HZ { get { return 0x03; } }
@@ -812,7 +931,7 @@ namespace AO_Lib
             /// <summary>
             /// Конструктор. Инициализирует экземляр класса по номеру (и дескриптору) физического АО фильтра
             /// </summary>
-            public STC_Filter(string Descriptor,uint number,FT_HANDLE ListFlag) 
+            public STC_Filter(string Descriptor,uint number,FT_HANDLE ListFlag) : base()
             {
                 Own_dwListDescFlags = ListFlag;
                 FilterDescriptor_or_name = Descriptor;
@@ -851,7 +970,9 @@ namespace AO_Lib
                         float freq = Get_HZ_via_WL(pWL);
                         sWL_Current = pWL;
                         sHZ_Current = Get_HZ_via_WL(pWL);
-                        return (this.Set_Hz(freq));
+                        int code = (this.Set_Hz(freq));
+                        onSetWl?.Invoke(this, WL_Current, HZ_Current);
+                        return code;
                     }
                     catch
                     {
@@ -878,6 +999,7 @@ namespace AO_Lib
                         WriteUsb(7);
                         sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
+                        onSetWl?.Invoke(this, WL_Current, HZ_Current);
                         return 0;
                     }
                     catch (Exception exc)
