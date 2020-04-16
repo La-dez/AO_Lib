@@ -4,6 +4,7 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Drawing;
 using FT_HANDLE = System.UInt32;
+using System.Linq;
 //using aom; 
 
 namespace AO_Lib
@@ -15,7 +16,11 @@ namespace AO_Lib
             public abstract FilterTypes FilterType { get; }
 
             //Все о фильтре: дескриптор(имя), полное и краткое имя dev файла и управляющая dll
-            protected abstract string FilterDescriptor_or_name { set; get; }
+            
+            protected abstract string _FilterName { set; get; }
+            public virtual string FilterName { get { return (_FilterName); } }
+            protected abstract string _FilterSerial { set; get; }
+            public virtual string FilterSerial { get { return (_FilterSerial); } }
             protected abstract string FilterCfgName { set; get; }
             protected abstract string FilterCfgPath { set; get; }
             protected abstract string DllName { set; get; }
@@ -145,7 +150,7 @@ namespace AO_Lib
             public virtual int Set_Hz(float freq)
             {
                 if ((freq > HZ_Max) || (freq < HZ_Min))
-                    throw new Exception(String.Format("Unable to set this wavelenght. Please, enter the ultrasound frequency value in {0} - {1} MHz range.", HZ_Min, HZ_Max));
+                    throw new Exception(String.Format("Unable to set this freq. Please, enter the ultrasound frequency value in {0} - {1} MHz range.", HZ_Min, HZ_Max));
                 else if (InnerTimer != null)
                 {
                     if (!IsReady2set)
@@ -363,6 +368,8 @@ namespace AO_Lib
                 }
                 return result;
             }
+
+            [Obsolete]
             public static AO_Filter Find_and_connect_AnyFilter(bool IsEmulator = false)
             {
                 if (IsEmulator) return (new Emulator());
@@ -370,8 +377,8 @@ namespace AO_Lib
                 int NumberOfTypes = 3;
                 int[] Devices_per_type = new int[NumberOfTypes];
 
-                string Descriptor_forSTCFilter; uint Flag_forSTC_filter;
-                Devices_per_type[0] = STC_Filter.Search_Devices(out Descriptor_forSTCFilter, out Flag_forSTC_filter);
+                string[] Descriptor_forSTCFilter; string[] Serial_forSTCFilter;
+                Devices_per_type[0] = STC_Filter.Search_Devices(out Descriptor_forSTCFilter, out Serial_forSTCFilter);
                 AO_Filter retFil = null;
 #if X64
                 if (Devices_per_type[0] != 0)
@@ -381,7 +388,7 @@ namespace AO_Lib
 #elif X86
                 Devices_per_type[1] = VNIIFTRI_Filter_v15.Search_Devices();
                 Devices_per_type[2] = VNIIFTRI_Filter_v20.Search_Devices();
-                if (Devices_per_type[0] != 0) retFil =  (new STC_Filter(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
+                if (Devices_per_type[0] != 0) retFil =  (new STC_Filter(Descriptor_forSTCFilter.Last(), (uint)(Devices_per_type[0] - 1)));
 
                 else if (Devices_per_type[1] != 0) retFil =  (new VNIIFTRI_Filter_v15());
                 else if (Devices_per_type[2] != 0) retFil =  (new VNIIFTRI_Filter_v20());
@@ -389,12 +396,54 @@ namespace AO_Lib
 #endif
                 return retFil;
             }
+            public static List<AO_Filter> Find_all_filters()
+            {
+                var FinalList = new List<AO_Filter>();
+                //search of filters of any types
+                var l1 = List_STC_Filters();
+                var l2 = List_VNIIFTRI_Filters_v15();
+                var l3 = List_VNIIFTRI_Filters_v20();
+                FinalList = ConcatLists_ofFilters(l1, l2, l3);
+
+
+               // if (FinalList.Count == 0) FinalList.Add(new Emulator());
+                return FinalList;
+            }
+            private static List<AO_Filter> List_STC_Filters()
+            {
+                var FinalList = new List<AO_Filter>();
+                string[] FilterNames; string[] FilterSerials;
+                var NumOfDev = STC_Filter.Search_Devices(out FilterNames,out FilterSerials);
+                for(int i = 0;i<NumOfDev;i++)
+                {
+                    FinalList.Add(new STC_Filter(FilterNames[i], FilterSerials[i]));
+                }
+                return FinalList;
+            }
+            private static List<AO_Filter> List_VNIIFTRI_Filters_v15()
+            {
+                var FinalList = new List<AO_Filter>();
+                return FinalList;
+            }
+            private static List<AO_Filter> List_VNIIFTRI_Filters_v20()
+            {
+                var FinalList = new List<AO_Filter>();
+                return FinalList;
+            }
+            private static List<AO_Filter> ConcatLists_ofFilters(params List<AO_Filter>[] filters)
+            {
+                List<AO_Filter> datalist = new List<AO_Filter>();
+                foreach (List<AO_Filter> list in filters)
+                { datalist.AddRange(list); }
+                return datalist;
+            }
         }
         public class Emulator : AO_Filter
         {
             public override FilterTypes FilterType { get { return FilterTypes.Emulator; } }
 
-            protected override string FilterDescriptor_or_name { set; get; }
+            protected override string _FilterName { set; get; }
+            protected override string _FilterSerial { set; get; }
             protected override string FilterCfgName { set; get; }
             protected override string FilterCfgPath { set; get; }
             protected override string DllName { set; get; }
@@ -420,8 +469,14 @@ namespace AO_Lib
             public override event SetNotifier onSetHz;
 
             public Emulator() : base()
-            {               
-                sAO_ProgrammMode_Ready = false;
+            {
+                var Random = new Random();
+                var i_max = Random.Next(4, 10); var num = 0;
+                for (int i = 0; i < i_max; i++) num = Random.Next(100000, 999999);
+
+                _FilterName = FilterType.ToString();
+                _FilterSerial = "F"+num.ToString();
+               sAO_ProgrammMode_Ready = false;
             }
             ~Emulator()
             {
@@ -500,7 +555,8 @@ namespace AO_Lib
         {
             public override FilterTypes FilterType { get { return FilterTypes.VNIIFTRI_Filter_v15; } }
 
-            protected override string FilterDescriptor_or_name { set; get; }
+            protected override string _FilterName { set; get; }
+            protected override string _FilterSerial { set; get; }
             protected override string FilterCfgName { set; get; }
             protected override string FilterCfgPath { set; get; }
             protected override string DllName { set; get; }
@@ -525,6 +581,15 @@ namespace AO_Lib
             public VNIIFTRI_Filter_v15() : base()
             {
                 Init_device(0);
+                _FilterName = Ask_required_dev_file();
+                _FilterSerial = "0 - number in the list of VNIIFTRI_Filter_v15 Filters";
+                sAO_ProgrammMode_Ready = false;
+            }
+            public VNIIFTRI_Filter_v15(int number) : base()
+            {
+                Init_device((uint)number);
+                _FilterName = Ask_required_dev_file();
+                _FilterSerial = number.ToString() + " - number in the list of VNIIFTRI_Filter_v15 Filters";
                 sAO_ProgrammMode_Ready = false;
             }
             ~VNIIFTRI_Filter_v15()
@@ -691,7 +756,8 @@ namespace AO_Lib
         {
             public override FilterTypes FilterType { get { return FilterTypes.VNIIFTRI_Filter_v20; } }
 
-            protected override string FilterDescriptor_or_name { set; get; }
+            protected override string _FilterName { set; get; }
+            protected override string _FilterSerial { set; get; }
             protected override string FilterCfgName { set; get; }
             protected override string FilterCfgPath { set; get; }
             protected override string DllName { set; get; }
@@ -716,6 +782,16 @@ namespace AO_Lib
             public VNIIFTRI_Filter_v20() : base()
             {
                 Init_device(0);
+                _FilterName = Ask_required_dev_file();
+                _FilterSerial = "0 - number in the list of VNIIFTRI_Filter_v20 Filters";
+                sAO_ProgrammMode_Ready = false;
+            }
+
+            public VNIIFTRI_Filter_v20(int number) : base()
+            {
+                Init_device((uint)number);
+                _FilterName = Ask_required_dev_file();
+                _FilterSerial = number.ToString() + " - number in the list of VNIIFTRI_Filter_v20 Filters";
                 sAO_ProgrammMode_Ready = false;
             }
             ~VNIIFTRI_Filter_v20()
@@ -723,7 +799,6 @@ namespace AO_Lib
                 this.PowerOff();
                 this.Dispose();
             }
-
             public override int Set_Wl(float pWL)
             {
                 base.Set_Wl(pWL);
@@ -886,7 +961,9 @@ namespace AO_Lib
         {
             public override FilterTypes FilterType { get { return FilterTypes.STC_Filter; } }
 
-            protected override string FilterDescriptor_or_name { set; get; }
+
+            protected override string _FilterName { set; get; }
+            protected override string _FilterSerial { set; get; }
             protected override string FilterCfgName { set; get; }
             protected override string FilterCfgPath { set; get; }
             protected override string DllName { set; get; }
@@ -914,7 +991,6 @@ namespace AO_Lib
             private const double dF_deviat_max = 200;//KHz
             private byte[] Own_UsbBuf = new byte[5000];
             private byte[] Own_ProgrammBuf;
-            private UInt32 Own_dwListDescFlags = 0;
             private UInt32 Own_m_hPort = 0;
             public override bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
 
@@ -931,13 +1007,28 @@ namespace AO_Lib
             /// <summary>
             /// Конструктор. Инициализирует экземляр класса по номеру (и дескриптору) физического АО фильтра
             /// </summary>
-            public STC_Filter(string Descriptor,uint number,FT_HANDLE ListFlag) : base()
+            public STC_Filter(string Descriptor,uint number) : base()
             {
-                Own_dwListDescFlags = ListFlag;
-                FilterDescriptor_or_name = Descriptor;
+                _FilterName = Descriptor;
+                _FilterSerial = number.ToString() + " - number in the list of STC Filters";
                 try
                 {
                     Init_device(number);
+                    AOF_Loaded_without_fails = true;
+                    sAO_ProgrammMode_Ready = false;
+                }
+                catch
+                {
+                    AOF_Loaded_without_fails = false;
+                }
+            }
+            public STC_Filter(string Descriptor, string Serial) : base()
+            {
+                _FilterName = Descriptor;
+                _FilterSerial = Serial;
+                try
+                {
+                    Init_device(Serial);
                     AOF_Loaded_without_fails = true;
 
                     sAO_ProgrammMode_Ready = false;
@@ -947,7 +1038,7 @@ namespace AO_Lib
                     AOF_Loaded_without_fails = false;
                 }
             }
-           
+
             /// <summary>
             /// Деструктор
             /// </summary>
@@ -970,7 +1061,10 @@ namespace AO_Lib
                         float freq = Get_HZ_via_WL(pWL);
                         sWL_Current = pWL;
                         sHZ_Current = Get_HZ_via_WL(pWL);
-                        int code = (this.Set_Hz(freq));
+                        var datadel = onSetHz;//disabling the delegate to avoid double notifying
+                        onSetHz = null;
+                        int code = Set_Hz(freq);
+                        onSetHz = datadel;//activating
                         onSetWl?.Invoke(this, WL_Current, HZ_Current);
                         return code;
                     }
@@ -999,7 +1093,7 @@ namespace AO_Lib
                         WriteUsb(7);
                         sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
-                        onSetWl?.Invoke(this, WL_Current, HZ_Current);
+                        onSetHz?.Invoke(this, WL_Current, HZ_Current);
                         return 0;
                     }
                     catch (Exception exc)
@@ -1056,6 +1150,7 @@ namespace AO_Lib
                         WriteUsb(7);//установка частоты происходит фактически тут
                         sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
+                        onSetHz?.Invoke(this, WL_Current, HZ_Current);
                         return 0;
                     }
                     catch(Exception exc)
@@ -1616,23 +1711,39 @@ namespace AO_Lib
             protected override int Init_device(uint number)
             {
                 AO_Devices.FTDIController_lib.FT_STATUS ftStatus = AO_Devices.FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
-                UInt32 dwOpenFlag;
 
                 if (Own_m_hPort == 0)
                 {
-                    dwOpenFlag = Own_dwListDescFlags & ~AO_Devices.FTDIController_lib.FT_LIST_BY_INDEX;
-                    dwOpenFlag = Own_dwListDescFlags & ~AO_Devices.FTDIController_lib.FT_LIST_ALL;
-                    dwOpenFlag = 0;
-                    if (dwOpenFlag == 0)
-                    {
-                        //uiCurrentIndex = (uint)cmbDevList.SelectedIndex;
-                        ftStatus = AO_Devices.FTDIController_lib.FT_Open((uint)number, ref Own_m_hPort);
-                    }
-                    else
-                    {
-                        System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
-                        byte[] sDevName = enc.GetBytes(FilterDescriptor_or_name);
-                    }
+                     ftStatus = AO_Devices.FTDIController_lib.FT_Open((uint)number, ref Own_m_hPort);                   
+                }
+
+                if (ftStatus == AO_Devices.FTDIController_lib.FT_STATUS.FT_OK)
+                {
+                    // Set up the port
+                    FTDIController_lib.FT_SetBaudRate(Own_m_hPort, 9600);
+                    FTDIController_lib.FT_Purge(Own_m_hPort, FTDIController_lib.FT_PURGE_RX | FTDIController_lib.FT_PURGE_TX);
+                    FTDIController_lib.FT_SetTimeouts(Own_m_hPort, 3000, 3000);
+                }
+                else
+                {
+                    return (int)ftStatus;
+                }
+                Own_UsbBuf[0] = MainCommands.TEST;//пересылаем тестовый байт
+                try { WriteUsb(1); }
+                catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
+                return 0;
+            }
+            protected unsafe int Init_device(string SerialNum)
+            {
+                AO_Devices.FTDIController_lib.FT_STATUS ftStatus = AO_Devices.FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
+
+                if (Own_m_hPort == 0)
+                {
+                    System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
+
+                    var a = enc.GetBytes(SerialNum);
+                    fixed(byte* SerNumBytePointer = a)
+                         ftStatus = AO_Devices.FTDIController_lib.FT_OpenEx(SerNumBytePointer, FTDIController.FT_OPEN_BY_SERIAL_NUMBER, ref Own_m_hPort);                   
                 }
 
                 if (ftStatus == AO_Devices.FTDIController_lib.FT_STATUS.FT_OK)
@@ -1663,58 +1774,66 @@ namespace AO_Lib
             {
                 return ("(special *.dev file)");
             }
-
-            public static unsafe int Search_Devices(out string data_FilterDescriptor_or_name, out uint data_dwListDescFlags)
+          
+            public static unsafe int Search_Devices(out string[] FilterNames, out string[] FilterSerials)
             {
                 FTDIController_lib.FT_STATUS ftStatus = FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
                 UInt32 numDevs;
                 int countofdevs_to_return = 0;
-                int i;
-                byte[] sDevName = new byte[64];
-                void* p1;             
+                int i; int NumberOfSym_max = 64;
+                void* p1 = (void*)&numDevs;
 
-                p1 = (void*)&numDevs;
                 ftStatus = FTDIController_lib.FT_ListDevices(p1, null, FTDIController_lib.FT_LIST_NUMBER_ONLY);
                 countofdevs_to_return = (int)numDevs;
-                data_dwListDescFlags = FTDIController_lib.FT_LIST_BY_INDEX | FTDIController_lib.FT_OPEN_BY_DESCRIPTION;
-                string datastring = "";
+
+                var ListDescFlag = FTDIController_lib.FT_LIST_BY_INDEX_OPEN_BY_DESCRIPTION;
+                var ListSerialFlag = FTDIController_lib.FT_LIST_BY_INDEX_OPEN_BY_SERIAL;
+
+                FilterNames = new string[numDevs];
+                FilterSerials = new string[numDevs];
+                List<string> FilterNames_real = new List<string>();
+                List<string> FilterSerials_real = new List<string>();
+                List<byte[]> sDevNames = new List<byte[]>();
+                List<byte[]> sDevSerials = new List<byte[]>();
+
                 if (ftStatus == FTDIController_lib.FT_STATUS.FT_OK)
                 {
-                    if (data_dwListDescFlags == FTDIController_lib.FT_LIST_ALL)
+                    for (i = 0; i < numDevs; i++) // пройдемся по девайсам и спросим у них дескрипторы
                     {
-                        for (i = 0; i < numDevs; i++)
-                        {
-                            //cmbDevList.Items.Add(i);
-                        }
-                    }
-                    else
-                    {
+                        sDevNames.Add(new byte[NumberOfSym_max]);
+                        sDevSerials.Add(new byte[NumberOfSym_max]);
 
-                        for (i = 0; i < numDevs; i++) // пройдемся по девайсам и спросим у них дескрипторы
+                        fixed (byte* pBuf_name = sDevNames[i])
                         {
-                            fixed (byte* pBuf = sDevName)
+                            fixed (byte* pBuf_serial = sDevSerials[i])
                             {
-                                ftStatus = FTDIController_lib.FT_ListDevices((UInt32)i, pBuf, data_dwListDescFlags);
+                                ftStatus = FTDIController_lib.FT_ListDevices((UInt32)i, pBuf_name, ListDescFlag);
+                                ftStatus = FTDIController_lib.FT_ListDevices((UInt32)i, pBuf_serial, ListSerialFlag);
                                 if (ftStatus == FTDIController_lib.FT_STATUS.FT_OK)
                                 {
-                                    //string str;
                                     System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
-                                    datastring = enc.GetString(sDevName, 0, sDevName.Length);
-                                    //cmbDevList.Items.Add(str);
+                                    FilterNames[i] = enc.GetString(sDevNames[i], 0, NumberOfSym_max);
+                                    FilterSerials[i] = enc.GetString(sDevSerials[i], 0, NumberOfSym_max);
+                                    if (!FilterNames[i].Contains("Deflector"))
+                                    {
+                                        FilterNames_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(FilterNames[i]));
+                                        FilterSerials_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(FilterSerials[i]));
+                                    }
+                                    else countofdevs_to_return--;
                                 }
                                 else
                                 {
-                                    data_FilterDescriptor_or_name = null;
+                                    FilterNames = null;
                                     return (int)ftStatus;
                                 }
                             }
                         }
                     }
                 }
-                data_FilterDescriptor_or_name = datastring;
+                FilterNames = FilterNames_real.ToArray();
+                FilterSerials = FilterSerials_real.ToArray();
                 return countofdevs_to_return;
             }
-
             public override string Implement_Error(int pCode_of_error)
             {
                 return ((FTDIController_lib.FT_STATUS)pCode_of_error).ToString();
@@ -1811,6 +1930,9 @@ namespace AO_Lib
             public const UInt32 FT_LIST_ALL = 0x20000000;
             public const UInt32 FT_OPEN_BY_SERIAL_NUMBER = 1;
             public const UInt32 FT_OPEN_BY_DESCRIPTION = 2;
+
+            public const UInt32 FT_LIST_BY_INDEX_OPEN_BY_DESCRIPTION = FT_LIST_BY_INDEX | FT_OPEN_BY_DESCRIPTION;
+            public const UInt32 FT_LIST_BY_INDEX_OPEN_BY_SERIAL = FT_LIST_BY_INDEX | FT_OPEN_BY_SERIAL_NUMBER;
 
             // Word Lengths
             public const byte FT_BITS_8 = 8;
@@ -2205,22 +2327,37 @@ namespace AO_Lib
                         }
                         if (startfound && finishfound)
                         {
+                            double result = 0;
                             string data = datastring.Substring(startindex, finishindex - startindex);
-
-
-                            datavalues.Add((float)Convert.ToDouble(data.Replace('.', ',')));
+                            double.TryParse((data.Replace(',', '.')), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out result);
+                            double.TryParse((data.Replace(',', '.')), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out result);
+                            datavalues.Add((float)result);
                             startfound = finishfound = false;
                         }
                     }
                     if (startfound && !finishfound)
                     {
                         string data = datastring.Substring(startindex);
-                        if (isDotNeeded)
-                            datavalues.Add((float)Convert.ToDouble(data.Replace(',', '.')));
-                        else
-                            datavalues.Add((float)Convert.ToDouble(data.Replace('.', ',')));
+                        double result = 0;
+                        double.TryParse((data.Replace(',', '.')), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out result);
+                        datavalues.Add((float)result);
                     }
                     pPars = datavalues;
+
+                }
+            }
+            public class Processing
+            {
+                public static string RemoveZeroBytesFromString(string param)
+                {
+                    string result = param;
+                    while (result.Last() == '\0') result = RemoveZeroByteFromTheEnd(result);
+                    result += '\0';
+                    return result;
+                }
+                public static string RemoveZeroByteFromTheEnd(string param)
+                {
+                    return ((param.Last()=='\0')? param.Remove(param.Length - 1) : param);
                 }
             }
         }

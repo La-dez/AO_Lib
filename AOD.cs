@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
 using FT_HANDLE = System.UInt32;
+using System.Linq;
 //using aom; 
 
 namespace AO_Lib
@@ -16,9 +17,12 @@ namespace AO_Lib
             public abstract DeflectorTypes DeflectorType { get; }
 
             //Все о фильтре: дескриптор(имя), полное и краткое имя dev файла и управляющая dll
-            protected abstract string FilterDescriptor_or_name { set; get; }
-            protected abstract string FilterCfgName { set; get; }
-            protected abstract string FilterCfgPath { set; get; }
+            protected abstract string _DeflectorName { set; get; }
+            public virtual string DeflectorName { get { return (_DeflectorName); } }
+            protected abstract string _DeflectorSerial { set; get; }
+            public virtual string DeflectorSerial { get { return (_DeflectorSerial); } }
+            protected abstract string DeflectorCfgName { set; get; }
+            protected abstract string DeflectorCfgPath { set; get; }
             protected abstract string DllName { set; get; }
 
             protected abstract float[] HZs_1 { set; get; }
@@ -77,8 +81,69 @@ namespace AO_Lib
             protected abstract bool sAO_ProgrammMode_Ready { set; get; }
             public bool is_Programmed { get { return sAO_ProgrammMode_Ready; } }
 
+            //поля для реализации специальной задержки между перестройками
+            public virtual int MS_delay { get; protected set; }// [мс]
+            public virtual int MS_delay_default { get { return 20; } }// [мс]
+            public virtual int MS_delay_min { get { return 1; } }// [мс]
+            public virtual int MS_delay_max { get { return 2000; } }// [мс]
+            protected virtual System.Timers.Timer InnerTimer { set; get; }
+            protected virtual float datavalue_2set { set; get; }
+            protected virtual bool IsReady2set { set; get; }
+            protected virtual bool WasLastSetting { set; get; }
+            protected virtual Action<float> ActionOfSetting { set; get; }
+
+            //события
+            public delegate void SetNotifier(AO_Deflector sender, float Angle_now_1, float HZ_now_1, float Angle_now_2, float HZ_now_2);
+            public abstract event SetNotifier onSetHz;
 
             ///функционал
+
+            protected AO_Deflector()
+            {
+                //InitTimer(MS_delay_default);
+            }
+
+            public void InitTimer(int ms_delay)
+            {
+                // Create a timer with a two second interval.
+                if ((ms_delay < MS_delay_min) || (ms_delay > MS_delay_max)) MS_delay = MS_delay_default;
+                else MS_delay = ms_delay;
+                InnerTimer?.Dispose();
+                InnerTimer = null;
+                InnerTimer = new System.Timers.Timer(ms_delay);
+                // Hook up the Elapsed event for the timer. 
+                InnerTimer.Elapsed += OnElapedEvent;
+                InnerTimer.AutoReset = true;
+                InnerTimer.Stop();
+
+                IsReady2set = true;
+                WasLastSetting = false;
+            }
+            public void DeinitTimer()
+            {
+                InnerTimer.Dispose();
+                InnerTimer = null;
+            }
+
+            protected virtual void OnElapedEvent(Object source, System.Timers.ElapsedEventArgs e)
+            {
+                /*  Console.WriteLine("The Elapsed event was raised at {0:HH:mm:ss.fff}",
+                                    e.SignalTime);*/
+                IsReady2set = true;
+                InnerTimer.Stop();
+                if (!WasLastSetting)
+                {
+                    ActionOfSetting(datavalue_2set);
+                    IsReady2set = false;
+                    InnerTimer.Start();
+                }
+                else
+                {
+                    IsReady2set = true;
+                }
+                WasLastSetting = true;
+            }
+
             public virtual byte[] Create_byteMass_forFastTuneTest(float[] pFreqs,int steps=300, uint pAttenuation = 0)
             {
                 return new byte[0];
@@ -105,13 +170,29 @@ namespace AO_Lib
                 return Set_Hz_both(HZ_Current_1, pfreq_2, Attenuation_1_current, AT2);
             }
 
-            public virtual int Set_Angle_both(float pAngle_1,float pAngle_2, uint AT_1 = 0, uint AT_2 = 0)
+            public virtual int Set_Angle_both(float pAngle_1, float pAngle_2, uint AT_1 = 0, uint AT_2 = 0)
             {
+                if ((pAngle_1>Angle_Max_1) ||(pAngle_1<Angle_Min_1))
+                    throw new Exception(String.Format("Unable to set this angle. Please, enter the angle 1 value in {0} - {1} degrees range.", Angle_Min_1, Angle_Max_1));
+                if ((pAngle_2 > Angle_Max_2) || (pAngle_2 < Angle_Min_2))
+                    throw new Exception(String.Format("Unable to set this angle. Please, enter the angle 1 value in {0} - {1} degrees range.", Angle_Min_2, Angle_Max_2));
+
                 float HZ_1 = Get_HZ_via_Angle(pAngle_1, 0);
                 float HZ_2 = Get_HZ_via_Angle(pAngle_2, 1);
-                return Set_Hz_both(HZ_1, HZ_2, AT_1, AT_2);
+                return Set_Hz_both(HZ_1, HZ_2, AT_1, AT_2,true);
             }
-            public abstract int Set_Hz_both(float pfreq_1,float pfreq_2, uint AT_1 = 0, uint AT_2 = 0);
+            public virtual int Set_Hz_both(float pfreq_1,float pfreq_2, uint AT_1 = 0, uint AT_2 = 0,bool ignore_exc = false)
+            {
+                if(!ignore_exc)
+                {
+                    if ((pfreq_1 < HZ_Min_1) || (pfreq_1 > HZ_Max_1))
+                        throw new Exception(String.Format("Unable to set this freq. Please, enter the freq 1 value in {0} - {1} MHz range.", HZ_Min_1, HZ_Max_1));
+                    if ((pfreq_2 < HZ_Min_2) || (pfreq_2 > HZ_Max_2))
+                        throw new Exception(String.Format("Unable to set this freq. Please, enter the freq 1 value in {0} - {1} MHz range.", HZ_Min_2, HZ_Max_2));
+                }
+                return 0;
+            }
+
 
             public abstract int Set_OutputPower(byte percentage);
 
@@ -119,13 +200,13 @@ namespace AO_Lib
             public abstract int Set_Sweep_off();
 
             public abstract string Ask_required_dev_file();
-            public virtual string Ask_loaded_dev_file() { return FilterCfgName; }
+            public virtual string Ask_loaded_dev_file() { return DeflectorCfgName; }
             public virtual int Read_dev_file(string path)
             {
                 //throw new Exception();
                 var Data_from_dev = MiniHelp.Files.Read_txt(path);
-                FilterCfgPath = path;
-                FilterCfgName = System.IO.Path.GetFileName(path);
+                DeflectorCfgPath = path;
+                DeflectorCfgName = System.IO.Path.GetFileName(path);
                 List<float[]> AllPars;
                 MiniHelp.Files.Get_Data_fromDevFile(Data_from_dev.ToArray(), out AllPars);
 
@@ -150,8 +231,8 @@ namespace AO_Lib
                 Angles_1 = dAngles_1; Angles_2 = dAngles_2;
                 Attenuation_1 = dAttenuation_1; Attenuation_2 = dAttenuation_2;
 
-                FilterCfgPath = path;
-                FilterCfgName = System.IO.Path.GetFileName(path);
+                DeflectorCfgPath = path;
+                DeflectorCfgName = System.IO.Path.GetFileName(path);
 
                 return 0;
             }
@@ -295,17 +376,44 @@ namespace AO_Lib
                 }
                 return result[0];
             }
-
+            [Obsolete]
             public static AO_Deflector Find_and_connect_any_Deflector()
             {
-
                 int NumberOfTypes = 1;
                 int[] Devices_per_type = new int[NumberOfTypes];
 
-                string Descriptor_forSTCFilter; uint Flag_forSTC_filter;
-                Devices_per_type[0] = STC_Deflector.Search_Devices(out Descriptor_forSTCFilter, out Flag_forSTC_filter);
-                if (Devices_per_type[0] != 0) return (new STC_Deflector(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
+                string[] Descriptor_forSTCDeflector;
+                string[] Serial_forSTCDeflector;
+                Devices_per_type[0] = STC_Deflector.Search_Devices(out Descriptor_forSTCDeflector, out Serial_forSTCDeflector);
+                if (Devices_per_type[0] != 0) return (new STC_Deflector(Descriptor_forSTCDeflector.Last(), (uint)(Devices_per_type[0] - 1)));
                 else return (new Emulator_of_Deflector());
+            }
+            public static List<AO_Deflector> Find_all_deflectors()
+            {
+                var FinalList = new List<AO_Deflector>();
+                //search of deflectors of any types
+                var l1 = List_STC_Deflectors();
+                FinalList = ConcatLists_ofDeflectors(l1);
+                // if (FinalList.Count == 0) FinalList.Add(new Emulator());
+                return FinalList;
+            }
+            private static List<AO_Deflector> List_STC_Deflectors()
+            {
+                var FinalList = new List<AO_Deflector>();
+                string[] DeflectorNames; string[] DeflectorSerials;
+                var NumOfDev = STC_Deflector.Search_Devices(out DeflectorNames, out DeflectorSerials);
+                for (int i = 0; i < NumOfDev; i++)
+                {
+                    FinalList.Add(new STC_Deflector(DeflectorNames[i], DeflectorSerials[i]));
+                }
+                return FinalList;
+            }
+            private static List<AO_Deflector> ConcatLists_ofDeflectors(params List<AO_Deflector>[] deflectors)
+            {
+                List<AO_Deflector> datalist = new List<AO_Deflector>();
+                foreach (List<AO_Deflector> list in deflectors)
+                { datalist.AddRange(list); }
+                return datalist;
             }
             public static byte[] uLong_to_4bytes(ulong lvspom)
             {
@@ -330,10 +438,10 @@ namespace AO_Lib
         public class STC_Deflector : AO_Deflector
         {
             public override DeflectorTypes DeflectorType { get { return DeflectorTypes.STC_Deflector; } }
-
-            protected override string FilterDescriptor_or_name { set; get; }
-            protected override string FilterCfgName { set; get; }
-            protected override string FilterCfgPath { set; get; }
+            protected override string _DeflectorName { set; get; }
+            protected override string _DeflectorSerial { set; get; }
+            protected override string DeflectorCfgName { set; get; }
+            protected override string DeflectorCfgPath { set; get; }
             protected override string DllName { set; get; }
 
             protected override float[] HZs_1 { set; get; }
@@ -360,15 +468,17 @@ namespace AO_Lib
 
             private byte[] Own_UsbBuf = new byte[5000];
             private byte[] Own_ProgrammBuf;
-            private UInt32 Own_dwListDescFlags = 0;
             private UInt32 Own_m_hPort = 0;
 
-            public STC_Deflector(string Descriptor, uint number, FT_HANDLE ListFlag)
+            public override event SetNotifier onSetHz;
+
+            public STC_Deflector(string Descriptor, uint number)
             {
-                Own_dwListDescFlags = ListFlag;
-                FilterDescriptor_or_name = Descriptor;
+                _DeflectorName = Descriptor;
+                _DeflectorSerial = number.ToString() + " - number in the list of STC Deflectors";
                 try
                 {
+
                     Init_device(number);
                     AOD_Loaded_without_fails = true;
 
@@ -379,14 +489,32 @@ namespace AO_Lib
                     AOD_Loaded_without_fails = false;
                 }
             }
+            public STC_Deflector(string Descriptor, string Serial) : base()
+            {
+                _DeflectorName = Descriptor;
+                _DeflectorSerial = Serial;
+                try
+                {
+                    Init_device(Serial);
+                    AOD_Loaded_without_fails = true;
+
+                    sAO_ProgrammMode_Ready = false;
+                }
+                catch
+                {
+                    AOD_Loaded_without_fails = false;
+                }
+            }
+
             ~STC_Deflector()
             {
                 this.PowerOff();
                 this.Dispose();
             }
 
-            public override int Set_Hz_both(float pfreq_1, float pfreq_2, uint AT_1=0, uint AT_2 = 0)
+            public override int Set_Hz_both(float pfreq_1, float pfreq_2, uint AT_1=0, uint AT_2 = 0, bool ignore_exc = false)
             {
+                base.Set_Hz_both(pfreq_1, pfreq_2, AT_1, AT_2, ignore_exc);
                 if (AOD_Loaded_without_fails)
                 {
                     try
@@ -399,6 +527,7 @@ namespace AO_Lib
                         sHZ_Current_2 = pfreq_2;
                         sAttenuation_1_current = (AT_1 == 0) ? (uint)Get_Intensity_via_HZ(pfreq_1, 0) : AT_1;
                         sAttenuation_2_current = (AT_2 == 0) ? (uint)Get_Intensity_via_HZ(pfreq_2, 1) : AT_2;
+                        onSetHz?.Invoke(this, Angle_Current_1, HZ_Current_1, Angle_Current_2, HZ_Current_2);
                         return 0;
                     }
                     catch (Exception exc)
@@ -426,6 +555,7 @@ namespace AO_Lib
                             sHZ_Current_2 = pfreq_2;
                             sAttenuation_1_current = AT_1;
                             sAttenuation_2_current = AT_2;
+                            onSetHz?.Invoke(this, Angle_Current_1, HZ_Current_1, Angle_Current_2, HZ_Current_2);
                         }
                         return 0;
                     }
@@ -996,23 +1126,10 @@ namespace AO_Lib
             protected override int Init_device(uint number)
             {
                 AO_Devices.FTDIController.FT_STATUS ftStatus = AO_Devices.FTDIController.FT_STATUS.FT_OTHER_ERROR;
-                UInt32 dwOpenFlag;
 
                 if (Own_m_hPort == 0)
                 {
-                    dwOpenFlag = Own_dwListDescFlags & ~AO_Devices.FTDIController.FT_LIST_BY_INDEX;
-                    dwOpenFlag = Own_dwListDescFlags & ~AO_Devices.FTDIController.FT_LIST_ALL;
-                    dwOpenFlag = 0;
-                    if (dwOpenFlag == 0)
-                    {
-                        //uiCurrentIndex = (uint)cmbDevList.SelectedIndex;
-                        ftStatus = AO_Devices.FTDIController.FT_Open((uint)number, ref Own_m_hPort);
-                    }
-                    else
-                    {
-                        System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
-                        byte[] sDevName = enc.GetBytes(FilterDescriptor_or_name);
-                    }
+                    ftStatus = AO_Devices.FTDIController.FT_Open((uint)number, ref Own_m_hPort);
                 }
 
                 if (ftStatus == AO_Devices.FTDIController.FT_STATUS.FT_OK)
@@ -1029,6 +1146,35 @@ namespace AO_Lib
                 Own_UsbBuf[0] = 0x66;
                 try { WriteUsb(1); }
                 catch { return (int)FTDIController.FT_STATUS.FT_IO_ERROR; }
+                return 0;
+            }
+            protected unsafe int Init_device(string SerialNum)
+            {
+                AO_Devices.FTDIController_lib.FT_STATUS ftStatus = AO_Devices.FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
+
+                if (Own_m_hPort == 0)
+                {
+                    System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
+
+                    var a = enc.GetBytes(SerialNum);
+                    fixed (byte* SerNumBytePointer = a)
+                        ftStatus = AO_Devices.FTDIController_lib.FT_OpenEx(SerNumBytePointer, FTDIController.FT_OPEN_BY_SERIAL_NUMBER, ref Own_m_hPort);
+                }
+
+                if (ftStatus == AO_Devices.FTDIController_lib.FT_STATUS.FT_OK)
+                {
+                    // Set up the port
+                    FTDIController_lib.FT_SetBaudRate(Own_m_hPort, 9600);
+                    FTDIController_lib.FT_Purge(Own_m_hPort, FTDIController_lib.FT_PURGE_RX | FTDIController_lib.FT_PURGE_TX);
+                    FTDIController_lib.FT_SetTimeouts(Own_m_hPort, 3000, 3000);
+                }
+                else
+                {
+                    return (int)ftStatus;
+                }
+                Own_UsbBuf[0] = 0x66;//пересылаем тестовый байт
+                try { WriteUsb(1); }
+                catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
                 return 0;
             }
             protected override int Deinit_device()
@@ -1053,7 +1199,7 @@ namespace AO_Lib
                 p1 = (void*)&numDevs;
                 ftStatus = FTDIController.FT_ListDevices(p1, null, FTDIController.FT_LIST_NUMBER_ONLY);
                 countofdevs_to_return = (int)numDevs;
-                data_dwListDescFlags = FTDIController.FT_LIST_BY_INDEX | FTDIController.FT_OPEN_BY_DESCRIPTION;
+                data_dwListDescFlags = FTDIController.FT_LIST_BY_INDEX_OPEN_BY_DESCRIPTION;
                 string datastring = "";
                 if (ftStatus == FTDIController.FT_STATUS.FT_OK)
                 {
@@ -1069,6 +1215,7 @@ namespace AO_Lib
 
                         for (i = 0; i < numDevs; i++) // пройдемся по девайсам и спросим у них дескрипторы
                         {
+                            sDevName = new byte[64];
                             fixed (byte* pBuf = sDevName)
                             {
                                 ftStatus = FTDIController.FT_ListDevices((UInt32)i, pBuf, data_dwListDescFlags);
@@ -1089,6 +1236,66 @@ namespace AO_Lib
                     }
                 }
                 data_FilterDescriptor_or_name = datastring;
+                return countofdevs_to_return;
+            }
+            public static unsafe int Search_Devices(out string[] DeflectorNames, out string[] DeflectorSerials)
+            {
+                FTDIController_lib.FT_STATUS ftStatus = FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
+                UInt32 numDevs;
+                int countofdevs_to_return = 0;
+                int i; int NumberOfSym_max = 64;
+                void* p1 = (void*)&numDevs;
+
+                ftStatus = FTDIController_lib.FT_ListDevices(p1, null, FTDIController_lib.FT_LIST_NUMBER_ONLY);
+                countofdevs_to_return = (int)numDevs;
+
+                var ListDescFlag = FTDIController_lib.FT_LIST_BY_INDEX_OPEN_BY_DESCRIPTION;
+                var ListSerialFlag = FTDIController_lib.FT_LIST_BY_INDEX_OPEN_BY_SERIAL;
+
+                DeflectorNames = new string[numDevs];
+                DeflectorSerials = new string[numDevs];
+                List<string> DeflectorNames_real = new List<string>();
+                List<string> DeflectorSerials_real = new List<string>();
+
+                List<byte[]> sDevNames = new List<byte[]>();
+                List<byte[]> sDevSerials = new List<byte[]>();
+
+                if (ftStatus == FTDIController_lib.FT_STATUS.FT_OK)
+                {
+                    for (i = 0; i < numDevs; i++) // пройдемся по девайсам и спросим у них дескрипторы
+                    {
+                        sDevNames.Add(new byte[NumberOfSym_max]);
+                        sDevSerials.Add(new byte[NumberOfSym_max]);
+
+                        fixed (byte* pBuf_name = sDevNames[i])
+                        {
+                            fixed (byte* pBuf_serial = sDevSerials[i])
+                            {
+                                ftStatus = FTDIController_lib.FT_ListDevices((UInt32)i, pBuf_name, ListDescFlag);
+                                ftStatus = FTDIController_lib.FT_ListDevices((UInt32)i, pBuf_serial, ListSerialFlag);
+                                if (ftStatus == FTDIController_lib.FT_STATUS.FT_OK)
+                                {
+                                    System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
+                                    DeflectorNames[i] = enc.GetString(sDevNames[i], 0, NumberOfSym_max);
+                                    DeflectorSerials[i] = enc.GetString(sDevSerials[i], 0, NumberOfSym_max);
+                                    if (!DeflectorNames[i].Contains("Filter"))
+                                    {
+                                        DeflectorNames_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(DeflectorNames[i]));
+                                        DeflectorSerials_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(DeflectorSerials[i]));
+                                    }
+                                    else countofdevs_to_return--;
+                                }
+                                else
+                                {
+                                    DeflectorNames = null;
+                                    return (int)ftStatus;
+                                }
+                            }
+                        }
+                    }
+                }
+                DeflectorNames = DeflectorNames_real.ToArray();
+                DeflectorSerials = DeflectorSerials_real.ToArray();
                 return countofdevs_to_return;
             }
             public override string Implement_Error(int pCode_of_error)
@@ -1152,10 +1359,10 @@ namespace AO_Lib
         public class Emulator_of_Deflector : AO_Deflector
         {
             public override DeflectorTypes DeflectorType { get { return DeflectorTypes.Emulator; } }
-
-            protected override string FilterDescriptor_or_name { set; get; }
-            protected override string FilterCfgName { set; get; }
-            protected override string FilterCfgPath { set; get; }
+            protected override string _DeflectorName { set; get; }
+            protected override string _DeflectorSerial { set; get; }
+            protected override string DeflectorCfgName { set; get; }
+            protected override string DeflectorCfgPath { set; get; }
             protected override string DllName { set; get; }
 
             protected override float[] HZs_1 { set; get; }
@@ -1186,10 +1393,19 @@ namespace AO_Lib
             private UInt32 Own_dwListDescFlags = 0;
             private UInt32 Own_m_hPort = 0;
 
-            public Emulator_of_Deflector()
+            public override event SetNotifier onSetHz;
+
+            public Emulator_of_Deflector() : base()
             {
-               AOD_Loaded_without_fails = true;
-               sAO_ProgrammMode_Ready = false;
+                var Random = new Random();
+                var i_max = Random.Next(4, 10); var num = 0;
+                for (int i = 0; i < i_max; i++) num = Random.Next(100000, 999999);
+
+                _DeflectorName = DeflectorType.ToString();
+                _DeflectorSerial = "F" + num.ToString();
+
+                AOD_Loaded_without_fails = true;
+                sAO_ProgrammMode_Ready = false;
             }
             ~Emulator_of_Deflector()
             {
@@ -1197,8 +1413,9 @@ namespace AO_Lib
                 this.Dispose();
             }
 
-            public override int Set_Hz_both(float pfreq_1, float pfreq_2,uint AT_1=0,uint AT_2 = 0)
+            public override int Set_Hz_both(float pfreq_1, float pfreq_2,uint AT_1=0,uint AT_2 = 0, bool ignore_exc = false)
             {
+                base.Set_Hz_both(pfreq_1, pfreq_2, AT_1, AT_2, ignore_exc);
                 if (AOD_Loaded_without_fails)
                 {
                     try
@@ -1210,6 +1427,7 @@ namespace AO_Lib
                         sAngle_Current_2 = Get_Angle_via_HZ(pfreq_2, 1);
                         sHZ_Current_1 = pfreq_1;
                         sHZ_Current_2 = pfreq_2;
+                        onSetHz?.Invoke(this, Angle_Current_1, HZ_Current_1, Angle_Current_2, HZ_Current_2);
                         return 0;
                     }
                     catch (Exception exc)
@@ -1495,6 +1713,9 @@ namespace AO_Lib
             public const UInt32 FT_LIST_ALL = 0x20000000;
             public const UInt32 FT_OPEN_BY_SERIAL_NUMBER = 1;
             public const UInt32 FT_OPEN_BY_DESCRIPTION = 2;
+
+            public const UInt32 FT_LIST_BY_INDEX_OPEN_BY_DESCRIPTION = FT_LIST_BY_INDEX | FT_OPEN_BY_DESCRIPTION;
+            public const UInt32 FT_LIST_BY_INDEX_OPEN_BY_SERIAL = FT_LIST_BY_INDEX | FT_OPEN_BY_SERIAL_NUMBER;
 
             // Word Lengths
             public const byte FT_BITS_8 = 8;

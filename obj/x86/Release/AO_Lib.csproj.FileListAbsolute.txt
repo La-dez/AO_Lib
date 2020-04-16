@@ -16,3 +16,9 @@ E:\Работа Саша\АО\AO_Lib\obj\x86\Release\AO_Lib.csproj.CoreCompileIn
 E:\Работа Саша\АО\AO_Lib\obj\x86\Release\AO_Lib.dll
 E:\Работа Саша\АО\AO_Lib\obj\x86\Release\AO_Lib.pdb
 E:\Работа Саша\АО\AO_Lib\obj\x86\Release\AO_Lib.csprojAssemblyReference.cache
+C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\bin\x86\Release\AO_Lib.dll
+C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\bin\x86\Release\AO_Lib.pdb
+C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\obj\x86\Release\AO_Lib.csprojAssemblyReference.cache
+C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\obj\x86\Release\AO_Lib.csproj.CoreCompileInputs.cache
+C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\obj\x86\Release\AO_Lib.dll
+C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\obj\x86\Release\AO_Lib.pdb
