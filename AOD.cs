@@ -1187,7 +1187,7 @@ namespace AO_Lib
             {
                 return ("(special *.dev file)");
             }
-            public static unsafe int Search_Devices(out string data_FilterDescriptor_or_name, out uint data_dwListDescFlags)
+            public static unsafe int Search_Devices(out string data_DeflectorDescriptor_or_name, out uint data_dwListDescFlags)
             {
                 FTDIController.FT_STATUS ftStatus = FTDIController.FT_STATUS.FT_OTHER_ERROR;
                 UInt32 numDevs;
@@ -1228,14 +1228,14 @@ namespace AO_Lib
                                 }
                                 else
                                 {
-                                    data_FilterDescriptor_or_name = null;
+                                    data_DeflectorDescriptor_or_name = null;
                                     return (int)ftStatus;
                                 }
                             }
                         }
                     }
                 }
-                data_FilterDescriptor_or_name = datastring;
+                data_DeflectorDescriptor_or_name = datastring;
                 return countofdevs_to_return;
             }
             public static unsafe int Search_Devices(out string[] DeflectorNames, out string[] DeflectorSerials)
@@ -1402,7 +1402,7 @@ namespace AO_Lib
                 for (int i = 0; i < i_max; i++) num = Random.Next(100000, 999999);
 
                 _DeflectorName = DeflectorType.ToString();
-                _DeflectorSerial = "F" + num.ToString();
+                _DeflectorSerial = "D" + num.ToString();
 
                 AOD_Loaded_without_fails = true;
                 sAO_ProgrammMode_Ready = false;
