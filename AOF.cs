@@ -252,20 +252,27 @@ namespace AO_Lib
 
             public virtual float Get_HZ_via_WL(float pWL)
             {
-                float distance = (pWL - WL_Min);
-                if ((distance < (WLs.Length)) && (distance >= 0))
+                int num = WLs.Length;
+                int rem_pos = -1;
+                for (int i = 0; i < num - 1; i++)
                 {
-                    int a = (int)distance;
-                    if ((distance - a) < 0.0001f)  { return HZs[a]; }
-                    else { return (float)MiniHelp.Math.Interpolate_value(WLs[a], HZs[a], WLs[a+1], HZs[a+1], pWL); } //Проблема здесь 
+                    if ((WLs[i] >= pWL) && (WLs[i + 1] <= pWL)) { rem_pos = i; break; }
+                }
+                if (rem_pos != -1)
+                {
+                    if (pWL - WLs[rem_pos] < 0.0001f) return HZs[rem_pos];
+                    else if (WLs[rem_pos + 1] - pWL < 0.0001f) return HZs[rem_pos + 1];
+                    else
+                    {
+                        return (float)MiniHelp.Math.Interpolate_value(WLs[rem_pos], HZs[rem_pos], WLs[rem_pos + 1], HZs[rem_pos + 1], pWL);
+                    }
                 }
                 else
                 {
-                    if (distance < 0) return HZs[0];
-                    else return HZs[HZs.Length - 1];
+                    return WLs[0];
                 }
-                
             }
+
             public virtual float Get_WL_via_HZ(float pHZ)
             {
                 int num = HZs.Length;
