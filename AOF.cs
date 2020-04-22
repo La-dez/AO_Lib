@@ -388,7 +388,7 @@ namespace AO_Lib
 #elif X86
                 Devices_per_type[1] = VNIIFTRI_Filter_v15.Search_Devices();
                 Devices_per_type[2] = VNIIFTRI_Filter_v20.Search_Devices();
-                if (Devices_per_type[0] != 0) retFil =  (new STC_Filter(Descriptor_forSTCFilter.Last(), (uint)(Devices_per_type[0] - 1)));
+                if (Devices_per_type[0] != 0) retFil =  (new STC_Filter(Descriptor_forSTCFilter.Last(), Serial_forSTCFilter.Last()));
 
                 else if (Devices_per_type[1] != 0) retFil =  (new VNIIFTRI_Filter_v15());
                 else if (Devices_per_type[2] != 0) retFil =  (new VNIIFTRI_Filter_v20());
@@ -474,7 +474,7 @@ namespace AO_Lib
                 var i_max = Random.Next(4, 10); var num = 0;
                 for (int i = 0; i < i_max; i++) num = Random.Next(100000, 999999);
 
-                _FilterName = FilterType.ToString();
+                _FilterName = "Filter "+FilterType.ToString();
                 _FilterSerial = "F"+num.ToString();
                sAO_ProgrammMode_Ready = false;
             }

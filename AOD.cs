@@ -385,7 +385,7 @@ namespace AO_Lib
                 string[] Descriptor_forSTCDeflector;
                 string[] Serial_forSTCDeflector;
                 Devices_per_type[0] = STC_Deflector.Search_Devices(out Descriptor_forSTCDeflector, out Serial_forSTCDeflector);
-                if (Devices_per_type[0] != 0) return (new STC_Deflector(Descriptor_forSTCDeflector.Last(), (uint)(Devices_per_type[0] - 1)));
+                if (Devices_per_type[0] != 0) return (new STC_Deflector(Descriptor_forSTCDeflector.Last(), Serial_forSTCDeflector.Last()));
                 else return (new Emulator_of_Deflector());
             }
             public static List<AO_Deflector> Find_all_deflectors()
@@ -1401,7 +1401,7 @@ namespace AO_Lib
                 var i_max = Random.Next(4, 10); var num = 0;
                 for (int i = 0; i < i_max; i++) num = Random.Next(100000, 999999);
 
-                _DeflectorName = DeflectorType.ToString();
+                _DeflectorName = "Deflector "+DeflectorType.ToString();
                 _DeflectorSerial = "D" + num.ToString();
 
                 AOD_Loaded_without_fails = true;
