@@ -511,6 +511,13 @@ namespace AO_Lib
                 this.PowerOff();
                 this.Dispose();
             }
+            public int ClearBuffer()
+            {
+                var status = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                status = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // Purge(FT_PURGE_RX || FT_PURGE_TX);
+                status = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                return (int)status;
+            }
 
             public override int Set_Hz_both(float pfreq_1, float pfreq_2, uint AT_1=0, uint AT_2 = 0, bool ignore_exc = false)
             {
@@ -520,6 +527,8 @@ namespace AO_Lib
                     try
                     {
                         Own_UsbBuf = Create_byteMass_forHzTune(pfreq_1, pfreq_2, AT_1, AT_2);
+
+                        ClearBuffer();
                         WriteUsb(7+6);
                         sAngle_Current_1 = Get_Angle_via_HZ(pfreq_1, 0);
                         sAngle_Current_2 = Get_Angle_via_HZ(pfreq_2, 1);
@@ -545,7 +554,8 @@ namespace AO_Lib
                 if (AOD_Loaded_without_fails)
                 {
                     try
-                    {                      
+                    {
+                        ClearBuffer();
                         WriteUsb(pBM, 7 + 6);
                         if (Is_InnerVaribles_changed)
                         {
@@ -1052,6 +1062,8 @@ namespace AO_Lib
                         }
                         Own_UsbBuf = new byte[steps * 7];
                         Own_UsbBuf = Create_byteMass_forFastTuneTest(freq_mass,pSteps,1900);
+
+                        ClearBuffer();
                         WriteUsb(steps * 7);
                         return (int)FTDIController.FT_STATUS.FT_OK;
                     }
@@ -1070,7 +1082,7 @@ namespace AO_Lib
             {
                 try
                 {
-
+                    ClearBuffer();
                     WriteUsb(Own_ProgrammBuf, Own_ProgrammBuf.Length);
                 }
                 catch { return (int)FTDIController.FT_STATUS.FT_IO_ERROR; }
@@ -1092,14 +1104,12 @@ namespace AO_Lib
                     Own_UsbBuf = new byte[5000];
                     int count = 0;
                     Own_UsbBuf = Create_byteMass_forSweep(MHz_start, Sweep_range_MHz, Period, ref count);
-                    WriteUsb(Own_UsbBuf, Own_UsbBuf.Length);
-
-                    /*      FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                         FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // Purge(FT_PURGE_RX || FT_PURGE_TX);
-                         FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
+                    
                     try
                     {
-                        WriteUsb(count);
+                        ClearBuffer();
+                        WriteUsb(Own_UsbBuf, Own_UsbBuf.Length);
+                        
                     }
                     catch { return (int)FTDIController.FT_STATUS.FT_IO_ERROR; }
                     sAO_Sweep_On = true;
@@ -1117,7 +1127,11 @@ namespace AO_Lib
                 {
                     Own_UsbBuf[0] = 0x09; //it means, we will send off command
                     Own_UsbBuf[1] = Percentage;
-                    try { WriteUsb(2); }
+                    try
+                    {
+                        ClearBuffer();
+                        WriteUsb(2);
+                    }
                     catch { return (int)FTDIController.FT_STATUS.FT_IO_ERROR; }
                 }
                 catch { return (int)FTDIController.FT_STATUS.FT_OTHER_ERROR; }
@@ -1135,16 +1149,18 @@ namespace AO_Lib
                 if (ftStatus == AO_Devices.FTDIController.FT_STATUS.FT_OK)
                 {
                     // Set up the port
-                    FTDIController.FT_SetBaudRate(Own_m_hPort, 9600);
-                    FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX);
-                    FTDIController.FT_SetTimeouts(Own_m_hPort, 3000, 3000);
+                    ClearBuffer();
                 }
                 else
                 {
                     return (int)ftStatus;
                 }
                 Own_UsbBuf[0] = 0x66;
-                try { WriteUsb(1); }
+                try
+                {
+                    ClearBuffer();
+                    WriteUsb(1);
+                }
                 catch { return (int)FTDIController.FT_STATUS.FT_IO_ERROR; }
                 return 0;
             }
@@ -1164,16 +1180,18 @@ namespace AO_Lib
                 if (ftStatus == AO_Devices.FTDIController_lib.FT_STATUS.FT_OK)
                 {
                     // Set up the port
-                    FTDIController_lib.FT_SetBaudRate(Own_m_hPort, 9600);
-                    FTDIController_lib.FT_Purge(Own_m_hPort, FTDIController_lib.FT_PURGE_RX | FTDIController_lib.FT_PURGE_TX);
-                    FTDIController_lib.FT_SetTimeouts(Own_m_hPort, 3000, 3000);
+                    ClearBuffer();
                 }
                 else
                 {
                     return (int)ftStatus;
                 }
                 Own_UsbBuf[0] = 0x66;//пересылаем тестовый байт
-                try { WriteUsb(1); }
+                try
+                {
+                    ClearBuffer();
+                    WriteUsb(1); 
+                }
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
                 return 0;
             }
@@ -1317,7 +1335,10 @@ namespace AO_Lib
 
                     for (int i = 1; i < 2; i++) Own_UsbBuf[i] = 0;
                     Own_UsbBuf[0] = (byte)FTDIController.Bit_reverse(Own_UsbBuf[0]);
-                    try { WriteUsb(1); }
+                    try {
+                        ClearBuffer();
+                        WriteUsb(1);
+                    }
                     catch { return (int)FTDIController.FT_STATUS.FT_IO_ERROR; }
                 }
                 catch { return (int)FTDIController.FT_STATUS.FT_OTHER_ERROR; }
@@ -1649,22 +1670,7 @@ namespace AO_Lib
             public override void Dispose()
             {
                 Deinit_device();
-            }
-            
-            #region Перегрузки WriteUsb
-            //Перегрузки, которую можно юзать
-            public unsafe bool WriteUsb()
-            {
-                int count_in = Own_UsbBuf.Length;
-                return AO_Devices.FTDIController.WriteUsb(Own_m_hPort, count_in, Own_UsbBuf);
-            }
-
-            //Перегрузка, которую юзаем везде
-            public unsafe bool WriteUsb(int count)
-            { return AO_Devices.FTDIController.WriteUsb(Own_m_hPort, count, Own_UsbBuf); }
-            public unsafe bool WriteUsb(byte[] ByteMass, int count)
-            { return AO_Devices.FTDIController.WriteUsb(Own_m_hPort, count, ByteMass); }
-            #endregion
+            }                   
         }
 
         private static class FTDIController
