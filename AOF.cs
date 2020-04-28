@@ -91,7 +91,7 @@ namespace AO_Lib
                 InnerTimer = null;
                 InnerTimer = new System.Timers.Timer(ms_delay);
                 // Hook up the Elapsed event for the timer. 
-                InnerTimer.Elapsed += OnElapedEvent;
+                InnerTimer.Elapsed += OnElapsedEvent;
                 InnerTimer.AutoReset = true;
                 InnerTimer.Stop();
 
@@ -104,7 +104,7 @@ namespace AO_Lib
                 InnerTimer = null;
             }
             
-            protected virtual void OnElapedEvent(Object source, System.Timers.ElapsedEventArgs e)
+            protected virtual void OnElapsedEvent(Object source, System.Timers.ElapsedEventArgs e)
             {
                 /*  Console.WriteLine("The Elapsed event was raised at {0:HH:mm:ss.fff}",
                                     e.SignalTime);*/
@@ -256,7 +256,7 @@ namespace AO_Lib
                 int rem_pos = -1;
                 for (int i = 0; i < num - 1; i++)
                 {
-                    if ((WLs[i] >= pWL) && (WLs[i + 1] <= pWL)) { rem_pos = i; break; }
+                    if ((WLs[i+1] >= pWL) && (WLs[i] <= pWL)) { rem_pos = i; break; }
                 }
                 if (rem_pos != -1)
                 {
@@ -1097,10 +1097,14 @@ namespace AO_Lib
                     try
                     {
                         Own_UsbBuf = Create_byteMass_forHzTune(freq);
+                        var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
                         WriteUsb(7);
                         sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
                         onSetHz?.Invoke(this, WL_Current, HZ_Current);
+                        if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz");
                         return 0;
                     }
                     catch (Exception exc)
@@ -1123,7 +1127,11 @@ namespace AO_Lib
             {
                 try
                 {
+                    var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                    code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                    code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
                     WriteUsb(buf, 7);
+                    if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz_via_bytemass");
                     return 0;
                 }
                 catch (Exception exc)
@@ -1154,10 +1162,16 @@ namespace AO_Lib
                             Own_UsbBuf = Create_byteMass_forHzTune(freq, (uint)pCoef_Power_Decrement);
                             sCurrent_Attenuation = (int)pCoef_Power_Decrement;
                         }
+
+                        var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+
                         WriteUsb(7);//установка частоты происходит фактически тут
                         sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
                         onSetHz?.Invoke(this, WL_Current, HZ_Current);
+                        if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz");
                         return 0;
                     }
                     catch(Exception exc)
@@ -1456,8 +1470,13 @@ namespace AO_Lib
             public int Set_ProgrammMode_on()
             {
                 try
-                {                   
+                {
+                    var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                    code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                    code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
                     WriteUsb(Own_ProgrammBuf, Own_ProgrammBuf.Length);
+
+                    if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_ProgrammMode_on");
                 }
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
                 return (int)FTDIController_lib.FT_STATUS.FT_OK;
@@ -1696,10 +1715,10 @@ namespace AO_Lib
                     FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
                     try
                     {
-                     /*   FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                        FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                        FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
-
+                        var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Sweep_on");
                         WriteUsb(count);
                     }
                     catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
@@ -1727,9 +1746,10 @@ namespace AO_Lib
                 if (ftStatus == AO_Devices.FTDIController_lib.FT_STATUS.FT_OK)
                 {
                     // Set up the port
-                    FTDIController_lib.FT_SetBaudRate(Own_m_hPort, 9600);
-                    FTDIController_lib.FT_Purge(Own_m_hPort, FTDIController_lib.FT_PURGE_RX | FTDIController_lib.FT_PURGE_TX);
-                    FTDIController_lib.FT_SetTimeouts(Own_m_hPort, 3000, 3000);
+                    var code_er = FTDIController_lib.FT_SetBaudRate(Own_m_hPort, 9600);
+                    code_er = FTDIController_lib.FT_Purge(Own_m_hPort, FTDIController_lib.FT_PURGE_RX | FTDIController_lib.FT_PURGE_TX);
+                    code_er = FTDIController_lib.FT_SetTimeouts(Own_m_hPort, 3000, 3000);
+                    if (code_er != FTDIController_lib.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Sweep_on");
                 }
                 else
                 {
@@ -1756,9 +1776,10 @@ namespace AO_Lib
                 if (ftStatus == AO_Devices.FTDIController_lib.FT_STATUS.FT_OK)
                 {
                     // Set up the port
-                    FTDIController_lib.FT_SetBaudRate(Own_m_hPort, 9600);
-                    FTDIController_lib.FT_Purge(Own_m_hPort, FTDIController_lib.FT_PURGE_RX | FTDIController_lib.FT_PURGE_TX);
-                    FTDIController_lib.FT_SetTimeouts(Own_m_hPort, 3000, 3000);
+                    var code_er = FTDIController_lib.FT_SetBaudRate(Own_m_hPort, 9600);
+                    code_er = FTDIController_lib.FT_Purge(Own_m_hPort, FTDIController_lib.FT_PURGE_RX | FTDIController_lib.FT_PURGE_TX);
+                    code_er = FTDIController_lib.FT_SetTimeouts(Own_m_hPort, 3000, 3000);
+                    if (code_er != FTDIController_lib.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Sweep_on");
                 }
                 else
                 {
