@@ -1709,7 +1709,7 @@ namespace AO_Lib
                     int Multiplier = 0;
                     int[] HZMass = Calculate_sweep_params_012020(MHz_start, Sweep_range_MHz, Period, true, ref Multiplier);
                     Own_UsbBuf = Create_byteMass_byKnownParams_012020(HZMass, Multiplier);
-
+                  //  count = Own_UsbBuf.Count();
                /*      FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
                     FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // Purge(FT_PURGE_RX || FT_PURGE_TX);
                     FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/

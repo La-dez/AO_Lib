@@ -22,3 +22,8 @@ C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\obj\x86\Releas
 C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\obj\x86\Release\AO_Lib.csproj.CoreCompileInputs.cache
 C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\obj\x86\Release\AO_Lib.dll
 C:\Users\GNM\Desktop\AO_Cont_and_Lib\AOF_Controller+AO_Lib\AO_Lib\obj\x86\Release\AO_Lib.pdb
+C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\bin\x86\Release\AO_Lib.dll
+C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\bin\x86\Release\AO_Lib.pdb
+C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\obj\x86\Release\AO_Lib.csprojAssemblyReference.cache
+C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\obj\x86\Release\AO_Lib.dll
+C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\obj\x86\Release\AO_Lib.pdb
