@@ -389,7 +389,7 @@ namespace AO_Lib
                 AO_Filter retFil = null;
 #if X64
                 if (Devices_per_type[0] != 0)
-                    retFil =  (new STC_Filter(Descriptor_forSTCFilter, (uint)(Devices_per_type[0] - 1), Flag_forSTC_filter));
+                    retFil = (new STC_Filter(Descriptor_forSTCFilter.Last(), Serial_forSTCFilter.Last()));
                 else
                     retFil =  (new Emulator());
 #elif X86
@@ -1562,9 +1562,82 @@ namespace AO_Lib
                 }
                 return data_Own_UsbBuf;
             }
-
+            public static int[] Calculate_sweep_params_062020()
+            {
+                return null;
+            }
             /// <summary>
             /// Пересчитывает заданные пользователем параметры свипинга в массив конечных данных
+            /// </summary>
+            /// <param name="mfreq0_sweep">F0 - начальная частоты свипа</param>
+            /// <param name="mdeltafreq_sweep">Дельта по частоте, определяющая диапазон перестройки</param>
+            /// <param name="mN_sweep">Количество шагов при перестройке</param>
+            /// <param name="T_up_sweep">Время "подъема", мкс</param>
+            /// <param name="T_down_sweep">Время "спуска", мкс</param>
+            /// <param name="mode">Режим — пила(false) или треугольник(true)</param>
+            public byte[] Create_byteMass_byKnownParams_062020(float mfreq0_sweep,float mdeltafreq_sweep,
+                int mN_sweep,
+                int T_up_sweep,int T_down_sweep,
+                bool mode,
+                bool m_repeat = true)
+            {   
+                float[] freq = new float[3]; // unsigned long lvspom; unsigned int ivspom; float fvspom, freq[3], minstep;
+                byte[] data_buf = new byte[24];
+                double fsys_mcu = 1.7f * (0.5f * 75e6);
+                double mfreq_sys = Reference_frequency; //unsigned char tx[26]; unsigned char delayt1, delayt2; long fsys_mcu = 1.7 * (0.5 * 75e6);
+
+                //выставляем таймер для того, чтобы определять режим повтора sweep
+                uint timer_up = (uint)(65536 - 1e-6 * T_up_sweep * fsys_mcu / 2); //расчеты для таймера , mtup_sweep - время подъема
+                uint timer_down = (uint)(65536 - 1e-6 * T_down_sweep * fsys_mcu / 2);//расчеты для таймера перезапускающего свип, mtdown_sweep - время спуска
+                                                                                //начальный уровень амплитуды, default
+                                                                                //ivspom = 1700;
+                                                                                //Амплитуа из калибровочного файла, частота задается в МГц
+                float minstep = (float)(4.0 / mfreq_sys); //in usec
+                
+                if (mN_sweep > 0) { freq[2] = mdeltafreq_sweep / mN_sweep; } //шаг изменения частоты, mN_sweep — количество шагов в sweep
+                freq[0] = mfreq0_sweep; freq[1] = mfreq0_sweep + mdeltafreq_sweep; // начальная и конечная частоты
+                byte delayt1 = (byte)((float)T_up_sweep / (mN_sweep * minstep));
+                byte delayt2 = (byte)((float)T_down_sweep / (mN_sweep * minstep));
+                data_buf[0] = 0x0b;
+                data_buf[1] = 0x0b;
+                byte[] data_iFreq = new byte[4];
+                for (int i = 0; i <= 2; i++)
+                { //передача начальной, конечной частот и шага
+                    ulong data_lvspom = (ulong)((freq[i]) * (Math.Pow(2.0, 32.0) / (mfreq_sys)));
+                    data_iFreq = uLong_to_4bytes(data_lvspom);
+                    data_buf[2 + i * 4 + 0] = data_iFreq[0];
+                    data_buf[2 + i * 4 + 1] = data_iFreq[1];
+                    data_buf[2 + i * 4 + 2] = data_iFreq[2];
+                    data_buf[2 + i * 4 + 3] = data_iFreq[3];
+                }
+               /* if (mdwell.GetCheck() == 1) { tx[14] = 1; }
+                else { tx[14] = 0; } */
+                data_buf[14] = Convert.ToByte(mode);//этот параметр не используется в sweep
+                data_buf[15] = Convert.ToByte(mode); //режим — пила или треугольник
+                byte[] data_mass = new byte[2];
+                uint LocalAmpl = (uint)Get_Intensity_via_HZ((mfreq0_sweep + (float)mdeltafreq_sweep / 2)); // ivspom = patof->GetAmplForFreq(mfreq);
+                data_mass = uInt_to_2bytes(LocalAmpl);
+                data_buf[16] = data_mass[0];
+                data_buf[17] = data_mass[1]; //амплитуда
+                data_mass = uInt_to_2bytes(timer_up);
+                data_buf[18] = data_mass[0];
+                data_buf[19] = data_mass[1];// шаг таймера, определяющего направление счета
+                data_mass = uInt_to_2bytes(timer_down);
+                data_buf[20] = data_mass[0];
+                data_buf[21] = data_mass[1];//шаг таймера, определяющего направдение счета
+
+                data_buf[22] = Convert.ToByte(m_repeat);
+                if (m_repeat == true) { data_buf[22] = 1; } //параметр многократности запуска
+                else { data_buf[22] = 0; }
+                data_buf[23] = delayt1; //задержки для аппаратного таймера ramp
+                data_buf[24] = delayt2; //задержки ramp
+                return data_buf;
+              //  Write(tx, 25, &ret_bytes);
+
+                return null;
+            }
+            /// <summary>
+            /// Пересчитывает заданные пользователем параметры свипа в массив конечных частот
             /// </summary>
             /// <param name="pMHz_start">Начальная частота в МГц</param>
             /// <param name="pSweep_range_MHz">Диапазон варьирования. Максимум 5 МГц (012020)</param>
@@ -1707,12 +1780,11 @@ namespace AO_Lib
                     Own_UsbBuf = new byte[5000];
                     int count = 0;
                     int Multiplier = 0;
-                    int[] HZMass = Calculate_sweep_params_012020(MHz_start, Sweep_range_MHz, Period, true, ref Multiplier);
-                    Own_UsbBuf = Create_byteMass_byKnownParams_012020(HZMass, Multiplier);
+                   /* int[] HZMass = Calculate_sweep_params_012020(MHz_start, Sweep_range_MHz, Period, true, ref Multiplier);
+                    Own_UsbBuf = Create_byteMass_byKnownParams_012020(HZMass, Multiplier);*/
+                   
                   //  count = Own_UsbBuf.Count();
-               /*      FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                    FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // Purge(FT_PURGE_RX || FT_PURGE_TX);
-                    FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
+            
                     try
                     {
                         var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
@@ -1728,6 +1800,34 @@ namespace AO_Lib
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
             }
 
+            public int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, int steps,double time_up,double time_down)
+            {
+                //здесь MHz_start = m_f0 - начальна частота в МГц    
+                //Sweep_range_MHz = m_deltaf - девиация частоты в МГц
+                try
+                {
+
+                    Own_UsbBuf = new byte[5000];
+                    int count = 0;
+                    int Multiplier = 0;
+                   // int[] HZMass = Calculate_sweep_params_012020(MHz_start, Sweep_range_MHz, Period, true, ref Multiplier);
+                     Own_UsbBuf = Create_byteMass_byKnownParams_062020(MHz_start, Sweep_range_MHz, steps, (int)time_up, (int)time_down, time_down!=0);
+                    // Calculate_sweep_params_062020
+                    count = Own_UsbBuf.Count();
+                    try
+                    {
+                        var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Sweep_on");
+                        WriteUsb(count);
+                    }
+                    catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
+                    sAO_Sweep_On = true;
+                    return (int)FTDIController_lib.FT_STATUS.FT_OK;
+                }
+                catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
+            }
             public override int Set_Sweep_off()
             {
                 return Set_Hz(HZ_Current);
