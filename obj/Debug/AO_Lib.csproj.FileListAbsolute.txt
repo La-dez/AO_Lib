@@ -19,3 +19,8 @@ E:\Работа Саша\АО\AO_Lib\obj\Debug\AO_Lib.csprojAssemblyReference.ca
 E:\Работа Саша\АО\AO_Lib\obj\Debug\AO_Lib.csproj.CoreCompileInputs.cache
 E:\Работа Саша\АО\AO_Lib\obj\Debug\AO_Lib.dll
 E:\Работа Саша\АО\AO_Lib\obj\Debug\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\bin\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\bin\Debug\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\Debug\AO_Lib.csprojResolveAssemblyReference.cache
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\Debug\AO_Lib.dll
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\Debug\AO_Lib.pdb
