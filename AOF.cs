@@ -53,7 +53,7 @@ namespace AO_Lib
             public virtual float AO_TimeDeviation_Min { get { return 5; } }   // [мс]     
             public virtual float AO_TimeDeviation_Max { get { return 40; } } // [мс]
             public virtual float AO_FreqDeviation_Min { get { return 0.5f; } } // [МГц]
-            public virtual float AO_FreqDeviation_Max { get { return 5.0f; } }// [МГц]
+            public virtual float AO_FreqDeviation_Max { get { return 10/*5.0f*/; } }// [МГц]
 
             public virtual bool Bit_inverse_needed { get { return false; } }
             protected virtual bool sBit_inverse_needed { set; get; }
@@ -1577,14 +1577,14 @@ namespace AO_Lib
             /// <param name="mode">Режим — пила(false) или треугольник(true)</param>
             public byte[] Create_byteMass_byKnownParams_062020(float mfreq0_sweep,float mdeltafreq_sweep,
                 int mN_sweep,
-                int T_up_sweep,int T_down_sweep,
+                double T_up_sweep,double T_down_sweep,
                 bool mode,
                 bool m_repeat = true)
             {   
                 float[] freq = new float[3]; // unsigned long lvspom; unsigned int ivspom; float fvspom, freq[3], minstep;
-                byte[] data_buf = new byte[24];
+                byte[] data_buf = new byte[26];
                 double fsys_mcu = 1.7f * (0.5f * 75e6);
-                double mfreq_sys = Reference_frequency; //unsigned char tx[26]; unsigned char delayt1, delayt2; long fsys_mcu = 1.7 * (0.5 * 75e6);
+                double mfreq_sys = Reference_frequency/1e6; //unsigned char tx[26]; unsigned char delayt1, delayt2; long fsys_mcu = 1.7 * (0.5 * 75e6);
 
                 //выставляем таймер для того, чтобы определять режим повтора sweep
                 uint timer_up = (uint)(65536 - 1e-6 * T_up_sweep * fsys_mcu / 2); //расчеты для таймера , mtup_sweep - время подъема
@@ -1596,8 +1596,8 @@ namespace AO_Lib
                 
                 if (mN_sweep > 0) { freq[2] = mdeltafreq_sweep / mN_sweep; } //шаг изменения частоты, mN_sweep — количество шагов в sweep
                 freq[0] = mfreq0_sweep; freq[1] = mfreq0_sweep + mdeltafreq_sweep; // начальная и конечная частоты
-                byte delayt1 = (byte)((float)T_up_sweep / (mN_sweep * minstep));
-                byte delayt2 = (byte)((float)T_down_sweep / (mN_sweep * minstep));
+                byte delayt1 = (byte)Math.Round(T_up_sweep / (mN_sweep * minstep));
+                byte delayt2 = (byte)Math.Round(T_down_sweep / (mN_sweep * minstep));
                 data_buf[0] = 0x0b;
                 data_buf[1] = 0x0b;
                 byte[] data_iFreq = new byte[4];
@@ -1612,8 +1612,8 @@ namespace AO_Lib
                 }
                /* if (mdwell.GetCheck() == 1) { tx[14] = 1; }
                 else { tx[14] = 0; } */
-                data_buf[14] = Convert.ToByte(mode);//этот параметр не используется в sweep
-                data_buf[15] = Convert.ToByte(mode); //режим — пила или треугольник
+                data_buf[14] = Convert.ToByte(!mode);//dwell = true, если режим пила активирован(mode = false)
+                data_buf[15] = Convert.ToByte(mode); //режим — пила(false) или треугольник(true)
                 byte[] data_mass = new byte[2];
                 uint LocalAmpl = (uint)Get_Intensity_via_HZ((mfreq0_sweep + (float)mdeltafreq_sweep / 2)); // ivspom = patof->GetAmplForFreq(mfreq);
                 data_mass = uInt_to_2bytes(LocalAmpl);
@@ -1626,9 +1626,7 @@ namespace AO_Lib
                 data_buf[20] = data_mass[0];
                 data_buf[21] = data_mass[1];//шаг таймера, определяющего направдение счета
 
-                data_buf[22] = Convert.ToByte(m_repeat);
-                if (m_repeat == true) { data_buf[22] = 1; } //параметр многократности запуска
-                else { data_buf[22] = 0; }
+                data_buf[22] = Convert.ToByte(m_repeat); // m_repeat - параметр многократности запуска
                 data_buf[23] = delayt1; //задержки для аппаратного таймера ramp
                 data_buf[24] = delayt2; //задержки ramp
                 return data_buf;
@@ -1811,7 +1809,7 @@ namespace AO_Lib
                     int count = 0;
                     int Multiplier = 0;
                    // int[] HZMass = Calculate_sweep_params_012020(MHz_start, Sweep_range_MHz, Period, true, ref Multiplier);
-                     Own_UsbBuf = Create_byteMass_byKnownParams_062020(MHz_start, Sweep_range_MHz, steps, (int)time_up, (int)time_down, time_down!=0);
+                     Own_UsbBuf = Create_byteMass_byKnownParams_062020(MHz_start, Sweep_range_MHz, steps, time_up, time_down, !(time_down<1e-5));
                     // Calculate_sweep_params_062020
                     count = Own_UsbBuf.Count();
                     try
