@@ -1562,10 +1562,7 @@ namespace AO_Lib
                 }
                 return data_Own_UsbBuf;
             }
-            public static int[] Calculate_sweep_params_062020()
-            {
-                return null;
-            }
+           
             /// <summary>
             /// Пересчитывает заданные пользователем параметры свипинга в массив конечных данных
             /// </summary>
