@@ -2474,7 +2474,12 @@ namespace AO_Lib
                 public static string RemoveZeroBytesFromString(string param)
                 {
                     string result = param;
-                    while (result.Last() == '\0') result = RemoveZeroByteFromTheEnd(result);
+                    while (result.Length!=0)
+                    {
+                        if (result.Last() == '\0') result = RemoveZeroByteFromTheEnd(result);
+                        else break;                      
+                    }
+                    if (result.Length == 0) result = "undefined";
                     result += '\0';
                     return result;
                 }
