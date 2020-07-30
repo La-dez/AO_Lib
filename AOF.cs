@@ -1035,7 +1035,8 @@ namespace AO_Lib
                 _FilterSerial = Serial;
                 try
                 {
-                    Init_device(Serial);
+                    if(Serial=="undefined\0") Init_device(Descriptor, false);
+                    else Init_device(Serial);
                     AOF_Loaded_without_fails = true;
 
                     sAO_ProgrammMode_Ready = false;
@@ -1855,7 +1856,7 @@ namespace AO_Lib
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
                 return 0;
             }
-            protected unsafe int Init_device(string SerialNum)
+            protected unsafe int Init_device(string SerialNum_or_Name,bool UseSerial = true)
             {
                 AO_Devices.FTDIController_lib.FT_STATUS ftStatus = AO_Devices.FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
 
@@ -1863,9 +1864,13 @@ namespace AO_Lib
                 {
                     System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
 
-                    var a = enc.GetBytes(SerialNum);
-                    fixed(byte* SerNumBytePointer = a)
-                         ftStatus = AO_Devices.FTDIController_lib.FT_OpenEx(SerNumBytePointer, FTDIController.FT_OPEN_BY_SERIAL_NUMBER, ref Own_m_hPort);                   
+                    var a = enc.GetBytes(SerialNum_or_Name);
+                    if(UseSerial)
+                        fixed(byte* SerNumBytePointer = a)
+                            ftStatus = AO_Devices.FTDIController_lib.FT_OpenEx(SerNumBytePointer, FTDIController.FT_OPEN_BY_SERIAL_NUMBER, ref Own_m_hPort);    
+                    else
+                        fixed (byte* SerNumBytePointer = a)
+                            ftStatus = AO_Devices.FTDIController_lib.FT_OpenEx(SerNumBytePointer, FTDIController.FT_OPEN_BY_DESCRIPTION, ref Own_m_hPort);
                 }
 
                 if (ftStatus == AO_Devices.FTDIController_lib.FT_STATUS.FT_OK)

@@ -9,7 +9,6 @@ D:\Работа\Программы (мои разработки)\Спектро�
 D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\bin\x86\Release\AO_Lib.pdb
 D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.dll
 D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.pdb
-D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.csprojResolveAssemblyReference.cache
 E:\Работа Саша\АО\AO_Lib\bin\x86\Release\AO_Lib.dll
 E:\Работа Саша\АО\AO_Lib\bin\x86\Release\AO_Lib.pdb
 E:\Работа Саша\АО\AO_Lib\obj\x86\Release\AO_Lib.csproj.CoreCompileInputs.cache
@@ -27,3 +26,4 @@ C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\bin\x86\Release\AO_Lib.pdb
 C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\obj\x86\Release\AO_Lib.csprojAssemblyReference.cache
 C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\obj\x86\Release\AO_Lib.dll
 C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\obj\x86\Release\AO_Lib.pdb
+D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.csprojResolveAssemblyReference.cache
