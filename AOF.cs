@@ -2014,7 +2014,12 @@ namespace AO_Lib
 
         private static class FTDIController_lib
         {
+#if X86
             const string ftdi_dllname = "FTD2XX.dll";
+#endif
+#if X64
+            const string ftdi_dllname = "FTD2XX64.dll";
+#endif
 
             public enum FT_STATUS//:Uint32
             {
