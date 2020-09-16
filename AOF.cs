@@ -3,7 +3,17 @@ using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Drawing;
+#if X86
 using FT_HANDLE = System.UInt32;
+#endif
+#if X64
+using FT_HANDLE = System.UInt64;
+#endif
+#if X86
+using UIntXX = System.UInt32;
+#elif X64
+using UIntXX = System.UInt64;
+#endif
 using System.Linq;
 //using aom; 
 
@@ -998,7 +1008,12 @@ namespace AO_Lib
             private const double dF_deviat_max = 200;//KHz
             private byte[] Own_UsbBuf = new byte[5000];
             private byte[] Own_ProgrammBuf;
+#if X86
             private UInt32 Own_m_hPort = 0;
+#elif X64
+            private UInt64 Own_m_hPort = 0;
+#endif
+
             public override bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
 
             public override event SetNotifier onSetWl;
@@ -1035,13 +1050,26 @@ namespace AO_Lib
                 _FilterSerial = Serial;
                 try
                 {
-                    if(Serial=="undefined\0") Init_device(Descriptor, false);
-                    else Init_device(Serial);
+                    int errornum = (int)FTDIController_lib.FT_STATUS.FT_OK;
+                    try
+                    {
+                        if (Serial == "undefined\0") errornum = Init_device(Descriptor, false);
+                        else errornum = Init_device(Serial);
+                        if (errornum != (int)FTDIController_lib.FT_STATUS.FT_OK)
+                            throw new Exception();
+                    }
+                    catch
+                    {
+                        errornum = Init_device(0);
+                        if (errornum != (int)FTDIController_lib.FT_STATUS.FT_OK)
+                            throw new Exception("ORIGINAL: " + (FTDIController_lib.FT_STATUS)(errornum));
+                    }
+                        
                     AOF_Loaded_without_fails = true;
 
                     sAO_ProgrammMode_Ready = false;
                 }
-                catch
+                catch(Exception exc2)
                 {
                     AOF_Loaded_without_fails = false;
                 }
@@ -1098,9 +1126,10 @@ namespace AO_Lib
                     try
                     {
                         Own_UsbBuf = Create_byteMass_forHzTune(freq);
-                        var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                        code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        var code_er = FTDIController.FT_STATUS.FT_OK;
+                        /*  var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                          code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                          code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
                         WriteUsb(7);
                         sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
@@ -1128,9 +1157,10 @@ namespace AO_Lib
             {
                 try
                 {
-                    var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                    code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                    code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                    var code_er = FTDIController.FT_STATUS.FT_OK;
+                    /*  var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                      code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                      code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
                     WriteUsb(buf, 7);
                     if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz_via_bytemass");
                     return 0;
@@ -1163,10 +1193,10 @@ namespace AO_Lib
                             Own_UsbBuf = Create_byteMass_forHzTune(freq, (uint)pCoef_Power_Decrement);
                             sCurrent_Attenuation = (int)pCoef_Power_Decrement;
                         }
-
-                        var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        var code_er = FTDIController.FT_STATUS.FT_OK;
+                  /*      var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
                         code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
 
                         WriteUsb(7);//установка частоты происходит фактически тут
                         sWL_Current = Get_WL_via_HZ(freq);
@@ -1472,9 +1502,10 @@ namespace AO_Lib
             {
                 try
                 {
-                    var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                    var code_er = FTDIController.FT_STATUS.FT_OK;
+                  /*  var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
                     code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                    code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                    code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
                     WriteUsb(Own_ProgrammBuf, Own_ProgrammBuf.Length);
 
                     if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_ProgrammMode_on");
@@ -1783,9 +1814,10 @@ namespace AO_Lib
             
                     try
                     {
-                        var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                        code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        var code_er = FTDIController.FT_STATUS.FT_OK;
+                        /*  var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                          code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                          code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
                         if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Sweep_on");
                         WriteUsb(count);
                     }
@@ -1812,9 +1844,10 @@ namespace AO_Lib
                     count = Own_UsbBuf.Count();
                     try
                     {
-                        var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                        code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                        var code_er = FTDIController.FT_STATUS.FT_OK;
+                        /*  var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                          code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                          code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
                         if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Sweep_on");
                         WriteUsb(count);
                     }
@@ -1879,7 +1912,7 @@ namespace AO_Lib
                     var code_er = FTDIController_lib.FT_SetBaudRate(Own_m_hPort, 9600);
                     code_er = FTDIController_lib.FT_Purge(Own_m_hPort, FTDIController_lib.FT_PURGE_RX | FTDIController_lib.FT_PURGE_TX);
                     code_er = FTDIController_lib.FT_SetTimeouts(Own_m_hPort, 3000, 3000);
-                    if (code_er != FTDIController_lib.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Sweep_on");
+                    if (code_er != FTDIController_lib.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Init_device");
                 }
                 else
                 {
@@ -1906,9 +1939,9 @@ namespace AO_Lib
             public static unsafe int Search_Devices(out string[] FilterNames, out string[] FilterSerials)
             {
                 FTDIController_lib.FT_STATUS ftStatus = FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
-                UInt32 numDevs;
+                UIntXX numDevs;
                 int countofdevs_to_return = 0;
-                int i; int NumberOfSym_max = 64;
+                uint i; int NumberOfSym_max = 64;
                 void* p1 = (void*)&numDevs;
 
                 ftStatus = FTDIController_lib.FT_ListDevices(p1, null, FTDIController_lib.FT_LIST_NUMBER_ONLY);
@@ -1931,17 +1964,17 @@ namespace AO_Lib
                         sDevNames.Add(new byte[NumberOfSym_max]);
                         sDevSerials.Add(new byte[NumberOfSym_max]);
 
-                        fixed (byte* pBuf_name = sDevNames[i])
+                        fixed (byte* pBuf_name = sDevNames[(int)i])
                         {
-                            fixed (byte* pBuf_serial = sDevSerials[i])
+                            fixed (byte* pBuf_serial = sDevSerials[(int)i])
                             {
-                                ftStatus = FTDIController_lib.FT_ListDevices((UInt32)i, pBuf_name, ListDescFlag);
-                                ftStatus = FTDIController_lib.FT_ListDevices((UInt32)i, pBuf_serial, ListSerialFlag);
+                                ftStatus = FTDIController_lib.FT_ListDevices((UIntXX)i, pBuf_name, ListDescFlag);
+                                ftStatus = FTDIController_lib.FT_ListDevices((UIntXX)i, pBuf_serial, ListSerialFlag);
                                 if (ftStatus == FTDIController_lib.FT_STATUS.FT_OK)
                                 {
                                     System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
-                                    FilterNames[i] = enc.GetString(sDevNames[i], 0, NumberOfSym_max);
-                                    FilterSerials[i] = enc.GetString(sDevSerials[i], 0, NumberOfSym_max);
+                                    FilterNames[i] = enc.GetString(sDevNames[(int)i], 0, NumberOfSym_max);
+                                    FilterSerials[i] = enc.GetString(sDevSerials[(int)i], 0, NumberOfSym_max);
                                     if (!FilterNames[i].Contains("Deflector"))
                                     {
                                         FilterNames_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(FilterNames[i]));
@@ -2018,7 +2051,7 @@ namespace AO_Lib
             const string ftdi_dllname = "FTD2XX.dll";
 #endif
 #if X64
-            const string ftdi_dllname = "FTD2XX64.dll";
+            const string ftdi_dllname = "ftd2xx64.dll";
 #endif
 
             public enum FT_STATUS//:Uint32
@@ -2043,29 +2076,29 @@ namespace AO_Lib
                 FT_OTHER_ERROR
             };
 
-            public const UInt32 FT_BAUD_300 = 300;
-            public const UInt32 FT_BAUD_600 = 600;
-            public const UInt32 FT_BAUD_1200 = 1200;
-            public const UInt32 FT_BAUD_2400 = 2400;
-            public const UInt32 FT_BAUD_4800 = 4800;
-            public const UInt32 FT_BAUD_9600 = 9600;
-            public const UInt32 FT_BAUD_14400 = 14400;
-            public const UInt32 FT_BAUD_19200 = 19200;
-            public const UInt32 FT_BAUD_38400 = 38400;
-            public const UInt32 FT_BAUD_57600 = 57600;
-            public const UInt32 FT_BAUD_115200 = 115200;
-            public const UInt32 FT_BAUD_230400 = 230400;
-            public const UInt32 FT_BAUD_460800 = 460800;
-            public const UInt32 FT_BAUD_921600 = 921600;
+            public const UIntXX FT_BAUD_300 = 300;
+            public const UIntXX FT_BAUD_600 = 600;
+            public const UIntXX FT_BAUD_1200 = 1200;
+            public const UIntXX FT_BAUD_2400 = 2400;
+            public const UIntXX FT_BAUD_4800 = 4800;
+            public const UIntXX FT_BAUD_9600 = 9600;
+            public const UIntXX FT_BAUD_14400 = 14400;
+            public const UIntXX FT_BAUD_19200 = 19200;
+            public const UIntXX FT_BAUD_38400 = 38400;
+            public const UIntXX FT_BAUD_57600 = 57600;
+            public const UIntXX FT_BAUD_115200 = 115200;
+            public const UIntXX FT_BAUD_230400 = 230400;
+            public const UIntXX FT_BAUD_460800 = 460800;
+            public const UIntXX FT_BAUD_921600 = 921600;
 
-            public const UInt32 FT_LIST_NUMBER_ONLY = 0x80000000;
-            public const UInt32 FT_LIST_BY_INDEX = 0x40000000;
-            public const UInt32 FT_LIST_ALL = 0x20000000;
-            public const UInt32 FT_OPEN_BY_SERIAL_NUMBER = 1;
-            public const UInt32 FT_OPEN_BY_DESCRIPTION = 2;
+            public const UIntXX FT_LIST_NUMBER_ONLY = 0x80000000;
+            public const UIntXX FT_LIST_BY_INDEX = 0x40000000;
+            public const UIntXX FT_LIST_ALL = 0x20000000;
+            public const UIntXX FT_OPEN_BY_SERIAL_NUMBER = 1;
+            public const UIntXX FT_OPEN_BY_DESCRIPTION = 2;
 
-            public const UInt32 FT_LIST_BY_INDEX_OPEN_BY_DESCRIPTION = FT_LIST_BY_INDEX | FT_OPEN_BY_DESCRIPTION;
-            public const UInt32 FT_LIST_BY_INDEX_OPEN_BY_SERIAL = FT_LIST_BY_INDEX | FT_OPEN_BY_SERIAL_NUMBER;
+            public const UIntXX FT_LIST_BY_INDEX_OPEN_BY_DESCRIPTION = FT_LIST_BY_INDEX | FT_OPEN_BY_DESCRIPTION;
+            public const UIntXX FT_LIST_BY_INDEX_OPEN_BY_SERIAL = FT_LIST_BY_INDEX | FT_OPEN_BY_SERIAL_NUMBER;
 
             // Word Lengths
             public const byte FT_BITS_8 = 8;
@@ -2096,27 +2129,27 @@ namespace AO_Lib
             public const byte FT_PURGE_TX = 2;
 
             // Events
-            public const UInt32 FT_EVENT_RXCHAR = 1;
-            public const UInt32 FT_EVENT_MODEM_STATUS = 2;
+            public const UIntXX FT_EVENT_RXCHAR = 1;
+            public const UIntXX FT_EVENT_MODEM_STATUS = 2;
 
            
             //public static byte* pBuf;
             [DllImport(ftdi_dllname)]
-            public static extern unsafe FT_STATUS FT_ListDevices(void* pvArg1, void* pvArg2, UInt32 dwFlags);  // FT_ListDevices by number only
+            public static extern unsafe FT_STATUS FT_ListDevices(void* pvArg1, void* pvArg2, UIntXX dwFlags);  // FT_ListDevices by number only
             [DllImport(ftdi_dllname)]
-            public static extern unsafe FT_STATUS FT_ListDevices(UInt32 pvArg1, void* pvArg2, UInt32 dwFlags); // FT_ListDevcies by serial number or description by index only
+            public static extern unsafe FT_STATUS FT_ListDevices(UIntXX pvArg1, void* pvArg2, UIntXX dwFlags); // FT_ListDevcies by serial number or description by index only
             [DllImport(ftdi_dllname)]
-            public static extern FT_STATUS FT_Open(UInt32 uiPort, ref FT_HANDLE ftHandle);
+            public static extern FT_STATUS FT_Open(UIntXX uiPort, ref FT_HANDLE ftHandle);
             [DllImport(ftdi_dllname)]
-            public static extern unsafe FT_STATUS FT_OpenEx(void* pvArg1, UInt32 dwFlags, ref FT_HANDLE ftHandle);
+            public static extern unsafe FT_STATUS FT_OpenEx(void* pvArg1, UIntXX dwFlags, ref FT_HANDLE ftHandle);
             [DllImport(ftdi_dllname)]
             public static extern FT_STATUS FT_Close(FT_HANDLE ftHandle);
             [DllImport(ftdi_dllname)]
-            public static extern unsafe FT_STATUS FT_Read(FT_HANDLE ftHandle, void* lpBuffer, UInt32 dwBytesToRead, ref UInt32 lpdwBytesReturned);
+            public static extern unsafe FT_STATUS FT_Read(FT_HANDLE ftHandle, void* lpBuffer, UIntXX dwBytesToRead, ref UIntXX lpdwBytesReturned);
             [DllImport(ftdi_dllname)]
-            public static extern unsafe FT_STATUS FT_Write(FT_HANDLE ftHandle, void* lpBuffer, UInt32 dwBytesToRead, ref UInt32 lpdwBytesWritten);
+            public static extern unsafe FT_STATUS FT_Write(FT_HANDLE ftHandle, void* lpBuffer, UIntXX dwBytesToRead, ref UIntXX lpdwBytesWritten);
             [DllImport(ftdi_dllname)]
-            public static extern unsafe FT_STATUS FT_SetBaudRate(FT_HANDLE ftHandle, UInt32 dwBaudRate);
+            public static extern unsafe FT_STATUS FT_SetBaudRate(FT_HANDLE ftHandle, UIntXX dwBaudRate);
             [DllImport(ftdi_dllname)]
             static extern unsafe FT_STATUS FT_SetDataCharacteristics(FT_HANDLE ftHandle, byte uWordLength, byte uStopBits, byte uParity);
             [DllImport(ftdi_dllname)]
@@ -2130,23 +2163,23 @@ namespace AO_Lib
             [DllImport(ftdi_dllname)]
             static extern unsafe FT_STATUS FT_ClrRts(FT_HANDLE ftHandle);
             [DllImport(ftdi_dllname)]
-            static extern unsafe FT_STATUS FT_GetModemStatus(FT_HANDLE ftHandle, ref UInt32 lpdwModemStatus);
+            static extern unsafe FT_STATUS FT_GetModemStatus(FT_HANDLE ftHandle, ref UIntXX lpdwModemStatus);
             [DllImport(ftdi_dllname)]
             static extern unsafe FT_STATUS FT_SetChars(FT_HANDLE ftHandle, byte uEventCh, byte uEventChEn, byte uErrorCh, byte uErrorChEn);
             [DllImport(ftdi_dllname)]
-            public static extern unsafe FT_STATUS FT_Purge(FT_HANDLE ftHandle, UInt32 dwMask);
+            public static extern unsafe FT_STATUS FT_Purge(FT_HANDLE ftHandle, UIntXX dwMask);
             [DllImport(ftdi_dllname)]
-            public static extern unsafe FT_STATUS FT_SetTimeouts(FT_HANDLE ftHandle, UInt32 dwReadTimeout, UInt32 dwWriteTimeout);
+            public static extern unsafe FT_STATUS FT_SetTimeouts(FT_HANDLE ftHandle, UIntXX dwReadTimeout, UIntXX dwWriteTimeout);
             [DllImport(ftdi_dllname)]
-            static extern unsafe FT_STATUS FT_GetQueueStatus(FT_HANDLE ftHandle, ref UInt32 lpdwAmountInRxQueue);
+            static extern unsafe FT_STATUS FT_GetQueueStatus(FT_HANDLE ftHandle, ref UIntXX lpdwAmountInRxQueue);
             [DllImport(ftdi_dllname)]
             static extern unsafe FT_STATUS FT_SetBreakOn(FT_HANDLE ftHandle);
             [DllImport(ftdi_dllname)]
             static extern unsafe FT_STATUS FT_SetBreakOff(FT_HANDLE ftHandle);
             [DllImport(ftdi_dllname)]
-            static extern unsafe FT_STATUS FT_GetStatus(FT_HANDLE ftHandle, ref UInt32 lpdwAmountInRxQueue, ref UInt32 lpdwAmountInTxQueue, ref UInt32 lpdwEventStatus);
+            static extern unsafe FT_STATUS FT_GetStatus(FT_HANDLE ftHandle, ref UIntXX lpdwAmountInRxQueue, ref UIntXX lpdwAmountInTxQueue, ref UIntXX lpdwEventStatus);
             [DllImport(ftdi_dllname)]
-            static extern unsafe FT_STATUS FT_SetEventNotification(FT_HANDLE ftHandle, UInt32 dwEventMask, void* pvArg);
+            static extern unsafe FT_STATUS FT_SetEventNotification(FT_HANDLE ftHandle, UIntXX dwEventMask, void* pvArg);
             [DllImport(ftdi_dllname)]
             public static extern unsafe FT_STATUS FT_ResetDevice(FT_HANDLE ftHandle);
             [DllImport(ftdi_dllname)]
@@ -2160,12 +2193,16 @@ namespace AO_Lib
             [DllImport(ftdi_dllname)]
             static extern unsafe FT_STATUS FT_SetBitMode(FT_HANDLE ftHandle, byte ucMask, byte ucEnable);
             [DllImport(ftdi_dllname)]
-            static extern unsafe FT_STATUS FT_SetUSBParameters(FT_HANDLE ftHandle, UInt32 dwInTransferSize, UInt32 dwOutTransferSize);
+            static extern unsafe FT_STATUS FT_SetUSBParameters(FT_HANDLE ftHandle, UIntXX dwInTransferSize, UIntXX dwOutTransferSize);
 
             //Сама функция
-            public static unsafe bool WriteUsb(uint pm_hPort, int count, byte[] pUsbBuf)
+#if X86
+            public static unsafe bool WriteUsb(UInt32 pm_hPort, int count, byte[] pUsbBuf)
+#elif X64
+            public static unsafe bool WriteUsb(UInt64 pm_hPort, int count, byte[] pUsbBuf)
+#endif          
             {
-                UInt32 dwRet = 0;
+                UIntXX dwRet = 0;
                 FTDIController_lib.FT_STATUS ftStatus = FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
                 byte[] cBuf = new Byte[count + 1];
 

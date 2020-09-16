@@ -2,7 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
+#if X86
 using FT_HANDLE = System.UInt32;
+#elif X64
+using FT_HANDLE = System.UInt64;
+#endif
+
 using System.Linq;
 //using aom; 
 
@@ -468,7 +473,12 @@ namespace AO_Lib
 
             private byte[] Own_UsbBuf = new byte[5000];
             private byte[] Own_ProgrammBuf;
+#if X86
             private UInt32 Own_m_hPort = 0;
+#elif X64
+            private UInt64 Own_m_hPort = 0;
+#endif
+
 
             public override event SetNotifier onSetHz;
 
@@ -1819,7 +1829,11 @@ namespace AO_Lib
             static extern unsafe FT_STATUS FT_SetUSBParameters(FT_HANDLE ftHandle, UInt32 dwInTransferSize, UInt32 dwOutTransferSize);
 
             //Сама функция
+#if X86
             public static unsafe bool WriteUsb(uint pm_hPort, int count, byte[] pUsbBuf)
+#elif X64
+            public static unsafe bool WriteUsb(UInt64 pm_hPort, int count, byte[] pUsbBuf)
+#endif
             {
                 UInt32 dwRet = 0;
                 FTDIController.FT_STATUS ftStatus = FTDIController.FT_STATUS.FT_OTHER_ERROR;
