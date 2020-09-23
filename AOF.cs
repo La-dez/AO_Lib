@@ -279,7 +279,16 @@ namespace AO_Lib
                 }
                 else
                 {
-                    return WLs[0];
+                    if(WLs[WLs.Length - 1]> WLs[0])
+                    {
+                        if (pWL > WLs[WLs.Length - 1]) return HZs[WLs.Length - 1];
+                        else return HZs[0];
+                    }
+                    else
+                    {
+                        if (pWL < WLs[WLs.Length - 1]) return HZs[WLs.Length - 1];
+                        else return HZs[0];
+                    }
                 }
             }
 
@@ -1975,7 +1984,7 @@ namespace AO_Lib
                                     System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
                                     FilterNames[i] = enc.GetString(sDevNames[(int)i], 0, NumberOfSym_max);
                                     FilterSerials[i] = enc.GetString(sDevSerials[(int)i], 0, NumberOfSym_max);
-                                    if (!FilterNames[i].Contains("Deflector"))
+                                    if (!FilterNames[i].Contains("Deflector")) //игнорируем подключенные дефлекторы
                                     {
                                         FilterNames_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(FilterNames[i]));
                                         FilterSerials_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(FilterSerials[i]));
