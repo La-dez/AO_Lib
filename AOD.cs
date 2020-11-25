@@ -209,11 +209,11 @@ namespace AO_Lib
             public virtual int Read_dev_file(string path)
             {
                 //throw new Exception();
-                var Data_from_dev = MiniHelp.Files.Read_txt(path);
+                var Data_from_dev = Helper.Files.Read_txt(path);
                 DeflectorCfgPath = path;
                 DeflectorCfgName = System.IO.Path.GetFileName(path);
                 List<float[]> AllPars;
-                MiniHelp.Files.Get_Data_fromDevFile(Data_from_dev.ToArray(), out AllPars);
+                Helper.Files.Get_Data_fromDevFile(Data_from_dev.ToArray(), out AllPars);
 
                 var dHZs_1 = AllPars[0];
                 var dAttenuation_1 = AllPars[2];
@@ -225,12 +225,12 @@ namespace AO_Lib
                 float[] dAngles_2 = new float[AllPars[3].Length];
                 AllPars[3].CopyTo(dAngles_2, 0);
 
-                MiniHelp.Math.Interpolate_curv(ref dAngles_1, ref dHZs_1,0.1f);
-                MiniHelp.Math.Interpolate_curv(ref dAngles_2, ref dHZs_2,0.1f);
+                Helper.Math.Interpolate_curv(ref dAngles_1, ref dHZs_1,0.1f);
+                Helper.Math.Interpolate_curv(ref dAngles_2, ref dHZs_2,0.1f);
                 dAngles_1 = AllPars[1];
                 dAngles_2 = AllPars[3];
-                MiniHelp.Math.Interpolate_curv(ref dAngles_1, ref dAttenuation_1, 0.1f);
-                MiniHelp.Math.Interpolate_curv(ref dAngles_2, ref dAttenuation_2, 0.1f);
+                Helper.Math.Interpolate_curv(ref dAngles_1, ref dAttenuation_1, 0.1f);
+                Helper.Math.Interpolate_curv(ref dAngles_2, ref dAttenuation_2, 0.1f);
 
                 HZs_1 = dHZs_1; HZs_2 = dHZs_2;
                 Angles_1 = dAngles_1; Angles_2 = dAngles_2;
@@ -274,7 +274,7 @@ namespace AO_Lib
                 }
                 if (remind == Angles.Length - 1) return HZs[remind];
 
-                return (float)MiniHelp.Math.Interpolate_value(Angles[remind], HZs[remind], Angles[remind + 1], HZs[remind + 1], pAngle);              
+                return (float)Helper.Math.Interpolate_value(Angles[remind], HZs[remind], Angles[remind + 1], HZs[remind + 1], pAngle);              
 
             }
             public virtual float Get_Angle_via_HZ(float pHZ, int Cell_Ind)
@@ -307,7 +307,7 @@ namespace AO_Lib
                     else if (pHZ == HZs[rem_pos + 1]) return Angles[rem_pos + 1];
                     else
                     {
-                        return (float)MiniHelp.Math.Interpolate_value(HZs[rem_pos], Angles[rem_pos], HZs[rem_pos + 1], Angles[rem_pos + 1], pHZ);
+                        return (float)Helper.Math.Interpolate_value(HZs[rem_pos], Angles[rem_pos], HZs[rem_pos + 1], Angles[rem_pos + 1], pHZ);
                     }
                 }
                 else
@@ -349,7 +349,7 @@ namespace AO_Lib
                     else if (pHZ == HZs[rem_pos + 1]) return Attenuation[rem_pos + 1];
                     else
                     {
-                        result = (float)MiniHelp.Math.Interpolate_value(HZs[rem_pos], Attenuation[rem_pos], HZs[rem_pos + 1], Attenuation[rem_pos + 1], pHZ);
+                        result = (float)Helper.Math.Interpolate_value(HZs[rem_pos], Attenuation[rem_pos], HZs[rem_pos + 1], Attenuation[rem_pos + 1], pHZ);
                     }
                 }
                 else
@@ -420,25 +420,7 @@ namespace AO_Lib
                 { datalist.AddRange(list); }
                 return datalist;
             }
-            public static byte[] uLong_to_4bytes(ulong lvspom)
-            {
-                short MSB, LSB;
-                byte[] result = new byte[4];
-                MSB = (short)(0x0000ffFF & (lvspom >> 16));
-                LSB = (short)lvspom;
-                result[0] = (byte)(0x00ff & (MSB >> 8));
-                result[1] = (byte)(MSB);
-                result[2] = (byte)(0x00ff & (LSB >> 8));
-                result[3] = (byte)(LSB);
-                return result;
-            }
-            public static byte[] uInt_to_2bytes(ulong ivspom)
-            {
-                byte[] result = new byte[2];
-                result[0] = (byte)(0x00ff & (ivspom >> 8)); ;
-                result[1] = (byte)ivspom;
-                return result;
-            }
+            
         }
         public class STC_Deflector : AO_Deflector
         {
@@ -1042,10 +1024,10 @@ namespace AO_Lib
 
                     data_Buf[0] = (byte)0x03; 
 
-                    var datamass_hz = uLong_to_4bytes(lvspom_1);
+                    var datamass_hz = Helper.Processing.uLong_to_4bytes(lvspom_1);
                     for (int j = 0; j < 4; j++) data_Buf[j + 1] = datamass_hz[j];
 
-                    var datamass_at = uInt_to_2bytes(ivspom_1);
+                    var datamass_at = Helper.Processing.uInt_to_2bytes(ivspom_1);
                     for (int j = 0; j < 2; j++) data_Buf[j + 5] = datamass_at[j];
 
                     for (int j = 0; j < 7; j++)
@@ -1308,8 +1290,8 @@ namespace AO_Lib
                                     DeflectorSerials[i] = enc.GetString(sDevSerials[i], 0, NumberOfSym_max);
                                     if (!DeflectorNames[i].Contains("Filter"))
                                     {
-                                        DeflectorNames_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(DeflectorNames[i]));
-                                        DeflectorSerials_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(DeflectorSerials[i]));
+                                        DeflectorNames_real.Add(Helper.Processing.RemoveZeroBytesFromString(DeflectorNames[i]));
+                                        DeflectorSerials_real.Add(Helper.Processing.RemoveZeroBytesFromString(DeflectorSerials[i]));
                                     }
                                     else countofdevs_to_return--;
                                 }

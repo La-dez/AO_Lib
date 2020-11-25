@@ -202,7 +202,7 @@ namespace AO_Lib
                 // throw new Exception("Ur in lib now 8"); 
                 try
                 {
-                    var Data_from_dev = MiniHelp.Files.Read_txt(path);
+                    var Data_from_dev = Helper.Files.Read_txt(path);
                     
 
                     sBit_inverse_needed = Data_from_dev[0].Contains("true") ? true : false;
@@ -210,7 +210,7 @@ namespace AO_Lib
                     FilterCfgPath = path;
                     FilterCfgName = System.IO.Path.GetFileName(path);
                     float[] pWLs, pHZs, pCoefs;
-                    MiniHelp.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
+                    Helper.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
 
                     float[] pData = new float[pWLs.Length];
                     pWLs.CopyTo(pData, 0);
@@ -236,8 +236,8 @@ namespace AO_Lib
                     pWLs = WLs;
                     pHZs = HZs;
                     pCoefs = Intensity;
-                    MiniHelp.Math.Interpolate_curv(ref pWLs, ref pHZs);
-                    MiniHelp.Math.Interpolate_curv(ref pData, ref pCoefs);
+                    Helper.Math.Interpolate_curv(ref pWLs, ref pHZs);
+                    Helper.Math.Interpolate_curv(ref pData, ref pCoefs);
 
                     WLs = pWLs;
                     HZs = pHZs;
@@ -274,7 +274,7 @@ namespace AO_Lib
                     else if (WLs[rem_pos + 1] - pWL < 0.0001f) return HZs[rem_pos + 1];
                     else
                     {
-                        return (float)MiniHelp.Math.Interpolate_value(WLs[rem_pos], HZs[rem_pos], WLs[rem_pos + 1], HZs[rem_pos + 1], pWL);
+                        return (float)Helper.Math.Interpolate_value(WLs[rem_pos], HZs[rem_pos], WLs[rem_pos + 1], HZs[rem_pos + 1], pWL);
                     }
                 }
                 else
@@ -306,7 +306,7 @@ namespace AO_Lib
                     else if (pHZ == HZs[rem_pos + 1]) return WLs[rem_pos + 1];
                     else
                     {
-                        return (float)MiniHelp.Math.Interpolate_value(HZs[rem_pos], WLs[rem_pos], HZs[rem_pos + 1], WLs[rem_pos + 1], pHZ);
+                        return (float)Helper.Math.Interpolate_value(HZs[rem_pos], WLs[rem_pos], HZs[rem_pos + 1], WLs[rem_pos + 1], pHZ);
                     }
                 }
                 else
@@ -322,7 +322,7 @@ namespace AO_Lib
                 {
                     int a = (int)distance;
                     if ((distance - a) < 1e6f) { return Intensity[a]; }
-                    else { return (float)MiniHelp.Math.Interpolate_value(WLs[a], Intensity[a], WLs[a + 1], Intensity[a + 1], pWL); }
+                    else { return (float)Helper.Math.Interpolate_value(WLs[a], Intensity[a], WLs[a + 1], Intensity[a + 1], pWL); }
                 }
                 else
                 {
@@ -345,7 +345,7 @@ namespace AO_Lib
                     else if (pHZ == HZs[rem_pos + 1]) return Intensity[rem_pos + 1];
                     else
                     {
-                        result = (float)MiniHelp.Math.Interpolate_value(HZs[rem_pos], Intensity[rem_pos], HZs[rem_pos + 1], Intensity[rem_pos + 1], pHZ);
+                        result = (float)Helper.Math.Interpolate_value(HZs[rem_pos], Intensity[rem_pos], HZs[rem_pos + 1], Intensity[rem_pos + 1], pHZ);
                     }
                 }
                 else
@@ -360,7 +360,7 @@ namespace AO_Lib
             public virtual List<float> Find_freq_mass_by_Wls(float[] Wls, float[] Hzs, List<float> Wls_needed)
             {
                 if (Wls_needed.Count == 0) return new List<float>();
-                List<System.Drawing.PointF> PtsFinal = MiniHelp.Math.Interpolate_curv(Wls, Hzs);
+                List<System.Drawing.PointF> PtsFinal = Helper.Math.Interpolate_curv(Wls, Hzs);
                 List<float> result = new List<float>();
                 int max_count = PtsFinal.Count;
                 int max_k = Wls_needed.Count;
@@ -672,11 +672,11 @@ namespace AO_Lib
                 float min=0, max=0;
                 try
                 {
-                    var Data_from_dev = MiniHelp.Files.Read_txt(path);
+                    var Data_from_dev = Helper.Files.Read_txt(path);
                     float[] pWLs, pHZs, pCoefs;
-                    MiniHelp.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
-                    MiniHelp.Math.Interpolate_curv(pWLs, pHZs);
-                    MiniHelp.Math.Interpolate_curv(pWLs, pCoefs);
+                    Helper.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
+                    Helper.Math.Interpolate_curv(pWLs, pHZs);
+                    Helper.Math.Interpolate_curv(pWLs, pCoefs);
                     WLs = pWLs;
                     HZs = pHZs;
                     Intensity = pCoefs;
@@ -874,11 +874,11 @@ namespace AO_Lib
                 float min = 0, max = 0;
                 try
                 {
-                    var Data_from_dev = MiniHelp.Files.Read_txt(path);
+                    var Data_from_dev = Helper.Files.Read_txt(path);
                     float[] pWLs, pHZs, pCoefs;
-                    MiniHelp.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
-                    MiniHelp.Math.Interpolate_curv(pWLs, pHZs);
-                    MiniHelp.Math.Interpolate_curv(pWLs, pCoefs);
+                    Helper.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
+                    Helper.Math.Interpolate_curv(pWLs, pHZs);
+                    Helper.Math.Interpolate_curv(pWLs, pCoefs);
                     WLs = pWLs;
                     HZs = pHZs;
                     Intensity = pCoefs;
@@ -1603,7 +1603,58 @@ namespace AO_Lib
                 }
                 return data_Own_UsbBuf;
             }
-           
+
+            /// <summary>
+            /// Пересчитывает заданные пользователем параметры мультичастотного режима в массив конечных данных
+            /// </summary>
+            /// <param name="freq_mass">Массив частот для перестройки</param>
+            /// <param name="T_needed">Необходимое время перестройки для всех частот [мкс] </param>         
+            public byte[] Create_byteMass_MultiFrequencyMode_112020(List<float> freq_mass, float T_needed)
+            {
+                //initializing 
+                int freq_num = freq_mass.Count;
+                byte[] data_buf = new byte[1 + 2 + 1 + freq_num * 4 + 2];
+                ulong const1 = (ulong)Math.Pow(2.0, 32.0);
+                byte[] data_iFreq = new byte[4];
+                //startbyte - 1 byte
+                byte SByte = 0xBB;
+               
+                //Number of freq - 2 bytes
+                byte[] N_Mass = Helper.Processing.uInt_to_2bytes((uint)freq_num);
+
+                //zero byte -1 byte
+                byte ZByte = 0x00;
+
+                //time calculations - 2 bytes
+                double fsys_mcu = 1.7f * (0.5f * 75e6);
+                double mfreq_sys = Reference_frequency / 1e6;
+                float step_min = (float)(4.0 / mfreq_sys); //in usec
+                float step_max = step_min * (int)Math.Pow(2, 16);
+                float step_need = T_needed / freq_num;
+                if ((step_need> step_max) || (step_need < step_min)) return null;
+                int Time_multiplier = (int)(step_need / step_min);
+                byte[] TimeMass = Helper.Processing.uInt_to_2bytes((uint)Time_multiplier);
+
+                //freq calculations and fulfilling
+                for (int i = 0; i < freq_num; i++)
+                { //передача начальной, конечной частот и шага
+                    ulong data_lvspom = (ulong)((freq_mass[i]) * (const1 / (mfreq_sys)));
+                    data_iFreq = Helper.Processing.uLong_to_4bytes(data_lvspom);
+                    data_buf[4 + (i * 4)] = data_iFreq[0];
+                    data_buf[5 + (i * 4)] = data_iFreq[1];
+                    data_buf[6 + (i * 4)] = data_iFreq[2];
+                    data_buf[7 + (i * 4)] = data_iFreq[3];
+                }
+                data_buf[0] = SByte;
+                data_buf[1] = N_Mass[0];
+                data_buf[2] = N_Mass[1];
+                data_buf[3] = ZByte;
+                data_buf[1 + 2 + 1 + freq_num * 4 + 0] = TimeMass[0];
+                data_buf[1 + 2 + 1 + freq_num * 4 + 1] = TimeMass[1];
+
+                return data_buf;
+            }
+
             /// <summary>
             /// Пересчитывает заданные пользователем параметры свипинга в массив конечных данных
             /// </summary>
@@ -1622,7 +1673,7 @@ namespace AO_Lib
                 float[] freq = new float[3]; // unsigned long lvspom; unsigned int ivspom; float fvspom, freq[3], minstep;
                 byte[] data_buf = new byte[26];
                 double fsys_mcu = 1.7f * (0.5f * 75e6);
-                double mfreq_sys = Reference_frequency/1e6; //unsigned char tx[26]; unsigned char delayt1, delayt2; long fsys_mcu = 1.7 * (0.5 * 75e6);
+                double mfreq_sys = Reference_frequency/1e6; 
 
                 //выставляем таймер для того, чтобы определять режим повтора sweep
                 uint timer_up = (uint)(65536 - 1e-6 * T_up_sweep * fsys_mcu / 2); //расчеты для таймера , mtup_sweep - время подъема
@@ -1642,7 +1693,7 @@ namespace AO_Lib
                 for (int i = 0; i <= 2; i++)
                 { //передача начальной, конечной частот и шага
                     ulong data_lvspom = (ulong)((freq[i]) * (Math.Pow(2.0, 32.0) / (mfreq_sys)));
-                    data_iFreq = uLong_to_4bytes(data_lvspom);
+                    data_iFreq = Helper.Processing.uLong_to_4bytes(data_lvspom);
                     data_buf[2 + i * 4 + 0] = data_iFreq[0];
                     data_buf[2 + i * 4 + 1] = data_iFreq[1];
                     data_buf[2 + i * 4 + 2] = data_iFreq[2];
@@ -1654,13 +1705,13 @@ namespace AO_Lib
                 data_buf[15] = Convert.ToByte(mode); //режим — пила(false) или треугольник(true)
                 byte[] data_mass = new byte[2];
                 uint LocalAmpl = (uint)Get_Intensity_via_HZ((mfreq0_sweep + (float)mdeltafreq_sweep / 2)); // ivspom = patof->GetAmplForFreq(mfreq);
-                data_mass = uInt_to_2bytes(LocalAmpl);
+                data_mass = Helper.Processing.uInt_to_2bytes(LocalAmpl);
                 data_buf[16] = data_mass[0];
                 data_buf[17] = data_mass[1]; //амплитуда
-                data_mass = uInt_to_2bytes(timer_up);
+                data_mass = Helper.Processing.uInt_to_2bytes(timer_up);
                 data_buf[18] = data_mass[0];
                 data_buf[19] = data_mass[1];// шаг таймера, определяющего направление счета
-                data_mass = uInt_to_2bytes(timer_down);
+                data_mass = Helper.Processing.uInt_to_2bytes(timer_down);
                 data_buf[20] = data_mass[0];
                 data_buf[21] = data_mass[1];//шаг таймера, определяющего направдение счета
 
@@ -1672,6 +1723,7 @@ namespace AO_Lib
 
                 return null;
             }
+
             /// <summary>
             /// Пересчитывает заданные пользователем параметры свипа в массив конечных частот
             /// </summary>
@@ -1679,6 +1731,7 @@ namespace AO_Lib
             /// <param name="pSweep_range_MHz">Диапазон варьирования. Максимум 5 МГц (012020)</param>
             /// <param name="pPeriod">Временной интервал, в течение которого необходимо провести один цикл изменения частот, мкс. Минимум - 0,571 мкс (012020)</param>
             /// <param name="pMHz_start">Форма профиля одно цикла: 0 - равнобедренный треугольник, 1 - прямоугольный треугольник</param>
+            [Obsolete]
             public static int[] Calculate_sweep_params_012020(float pMHz_start, float pSweep_range_MHz, double pPeriod_mks, bool isTriangle, ref int Multiplier)
             {
                 //Принципы: делаем не меньше 25*2 шагов, так как в противном случае можем натыкаться на частные ограничения
@@ -1762,7 +1815,7 @@ namespace AO_Lib
                 byte[] data_Own_UsbBuf = new byte[totalcount];
                 data_Own_UsbBuf[0] = MainCommands.USER_CURVE; //стартовый байт для перестройки по заданной кривой частот.
 
-                byte[] data_L = uInt_to_2bytes((uint)(4 * Freq_mass_hz.Length + 2));
+                byte[] data_L = Helper.Processing.uInt_to_2bytes((uint)(4 * Freq_mass_hz.Length + 2));
                 data_Own_UsbBuf[1] = data_L[0];
                 data_Own_UsbBuf[2] = data_L[1];
 
@@ -1772,13 +1825,13 @@ namespace AO_Lib
                 for(int i = 0;i< Freq_mass_hz.Length;i++)
                 {
                     data_lvspom = (ulong)((Freq_mass_hz[i]) * (Math.Pow(2.0, 32.0) / 350e6));
-                    data_iFreq = uLong_to_4bytes(data_lvspom);
+                    data_iFreq = Helper.Processing.uLong_to_4bytes(data_lvspom);
                     data_Own_UsbBuf[2 + i * 4 + 1] = data_iFreq[0];
                     data_Own_UsbBuf[2 + i * 4 + 2] = data_iFreq[1];
                     data_Own_UsbBuf[2 + i * 4 + 3] = data_iFreq[2];
                     data_Own_UsbBuf[2 + i * 4 + 4] = data_iFreq[3];
                 }
-                byte[] data_T = uInt_to_2bytes((uint)time_multiplier);
+                byte[] data_T = Helper.Processing.uInt_to_2bytes((uint)time_multiplier);
                 data_Own_UsbBuf[2 + 4 * Freq_mass_hz.Length + 1] = data_T[0];
                 data_Own_UsbBuf[2 + 4 * Freq_mass_hz.Length + 2] = data_T[1];
 
@@ -1786,25 +1839,7 @@ namespace AO_Lib
 
             }
           
-            public static byte[] uLong_to_4bytes(ulong lvspom)
-            {
-                short MSB, LSB;
-                byte[] result = new byte[4];
-                MSB = (short)(0x0000ffFF & (lvspom >> 16));
-                LSB = (short)lvspom;
-                result[0] = (byte)(0x00ff & (MSB >> 8));
-                result[1] = (byte)(MSB);
-                result[2] = (byte)(0x00ff & (LSB >> 8));
-                result[3] = (byte)(LSB);
-                return result;
-            }
-            public static byte[] uInt_to_2bytes(ulong ivspom)
-            {
-                byte[] result = new byte[2];
-                result[0] = (byte)(0x00ff & (ivspom >> 8)); ;
-                result[1] = (byte)ivspom;
-                return result;
-            }
+        
 
             public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мкс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
             {
@@ -1866,6 +1901,35 @@ namespace AO_Lib
                 }
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
             }
+
+            public int Set_MF_test(List<float> Fr, float uSec)
+            {
+                //здесь MHz_start = m_f0 - начальна частота в МГц    
+                //Sweep_range_MHz = m_deltaf - девиация частоты в МГц
+                try
+                {
+
+                    Own_UsbBuf = new byte[5000];
+                   
+                    Own_UsbBuf = Create_byteMass_MultiFrequencyMode_112020(Fr, uSec);
+                    // Calculate_sweep_params_062020
+                    int count = Own_UsbBuf.Count();
+                    try
+                    {
+                        var code_er = FTDIController.FT_STATUS.FT_OK;
+                        /*  var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
+                          code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
+                          code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
+                        if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Sweep_on");
+                        WriteUsb(count);
+                    }
+                    catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
+                    sAO_Sweep_On = true;
+                    return (int)FTDIController_lib.FT_STATUS.FT_OK;
+                }
+                catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
+            }
+
             public override int Set_Sweep_off()
             {
                 return Set_Hz(HZ_Current);
@@ -1986,8 +2050,8 @@ namespace AO_Lib
                                     FilterSerials[i] = enc.GetString(sDevSerials[(int)i], 0, NumberOfSym_max);
                                     if (!FilterNames[i].Contains("Deflector")) //игнорируем подключенные дефлекторы
                                     {
-                                        FilterNames_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(FilterNames[i]));
-                                        FilterSerials_real.Add(MiniHelp.Processing.RemoveZeroBytesFromString(FilterSerials[i]));
+                                        FilterNames_real.Add(Helper.Processing.RemoveZeroBytesFromString(FilterNames[i]));
+                                        FilterSerials_real.Add(Helper.Processing.RemoveZeroBytesFromString(FilterSerials[i]));
                                     }
                                     else countofdevs_to_return--;
                                 }
@@ -2259,291 +2323,5 @@ namespace AO_Lib
             STC_Filter
         }
 
-        private static class MiniHelp
-        {
-            public class Math
-            {
-                public static double Interpolate_value(double x1, double y1, double x2, double y2, double x_tofind)
-                {
-                    return ((y2 - y1) / (x2 - x1)) * (x_tofind - x1) + y1;
-                }
-                public static List<PointF> Interpolate_curv(float[] Wls, float[] Hzs)
-                {
-                    List<PointF> result = new List<PointF>();
-                    int count_of_gaps = Wls.Length - 1;
-
-                    for (int i = 0; i < count_of_gaps; i++)
-                    {
-                        result.Add(new PointF(Wls[i], Hzs[i]));
-                        float count_of_wls_to_restruct = (Wls[i + 1] - Wls[i] - 1);
-                        for (int j = 1; j <= count_of_wls_to_restruct; j++)
-                        {
-                            float new_hz_val = Hzs[i] + j * ((float)(Hzs[i + 1] - Hzs[i])) / (Wls[i + 1] - Wls[i]);// = (x- Hzs[i] )/ (float)j;
-                            result.Add(new PointF(Wls[i] + j, new_hz_val));
-                        }
-                    }
-                    result.Add(new PointF(Wls[count_of_gaps], Hzs[count_of_gaps]));
-                    return result;
-                }
-                public static void Interpolate_curv(ref float[] Wls, ref float[] Hzs, float precision = 1f)
-                {
-                    List<PointF> result = new List<PointF>();
-                    if (precision != 1)
-                    {
-                        for (int i = 0; i < Wls.Length; i++)
-                        {
-                            Wls[i] /= precision;
-                        }
-                    }
-                    int count_of_gaps = Wls.Length - 1;
-
-                    for (int i = 0; i < count_of_gaps; i++)
-                    {
-                        result.Add(new PointF(Wls[i], Hzs[i]));
-                        float count_of_wls_to_restruct = (Wls[i + 1] - Wls[i] - 1);
-                        for (int j = 1; j <= count_of_wls_to_restruct; j++)
-                        {
-                            float new_hz_val = Hzs[i] + j * ((float)(Hzs[i + 1] - Hzs[i])) / (Wls[i + 1] - Wls[i]);// = (x- Hzs[i] )/ (float)j;
-                            result.Add(new PointF(Wls[i] + j, new_hz_val));
-                        }
-                    }
-                    result.Add(new PointF(Wls[count_of_gaps], Hzs[count_of_gaps]));
-                    int data_count = result.Count;
-                    Wls = new float[data_count];
-                    Hzs = new float[data_count];
-                    for (int i = 0; i < data_count; i++)
-                    {
-                        Wls[i] = result[i].X;
-                        Hzs[i] = result[i].Y;
-                    }
-                    if (precision != 1)
-                    {
-                        for (int i = 0; i < Wls.Length; i++)
-                        {
-                            Wls[i] *= precision;
-                        }
-                    }
-                }
-            }
-            public class Files
-            {
-                public static List<string> Read_txt(string path)
-                {
-                    string[] AllLines = System.IO.File.ReadAllLines(path);
-                    List<string> result = new List<string>(AllLines);
-                    return result;
-                }
-                public static bool Write_txt(string path, List<string> data)
-                {
-                    bool result = false;
-                    try
-                    {
-                        string[] AllLines = new string[data.Count];
-                        data.CopyTo(AllLines);
-                        System.IO.File.WriteAllLines(path, AllLines);
-                        result = true;
-                    }
-                    catch
-                    {
-                        result = false;
-                    }
-                    return result;
-                }
-
-                public static void AddString_2file(string FileName, string str)
-                {
-                    List<string> data = new List<string>() ;
-                    try { data = Read_txt(FileName); } catch { }
-                    data.Add(str);
-                    Write_txt(FileName, data);
-                }
-
-                public static void Get_WLData_byKnownCountofNumbers(int countofnumbers, string[] AllStrings,
-               out float[] pWls, out float[] pHzs, out float[] pCoefs)
-                {
-
-                    float CurWl = 0, CurHz = 0, CurCoef = 0;
-                    List<float> dWls = new List<float>();
-                    List<float> dHzs = new List<float>();
-                    List<float> dCoefs = new List<float>();
-
-                    float[] Params = new float[countofnumbers];
-                    for (int i = 0; i < AllStrings.Length; ++i)
-                    {
-                        try
-                        {
-                            Get_WLData_fromDevString(AllStrings[i], countofnumbers, Params);
-                            dHzs.Add(Params[0]); dWls.Add(Params[1]); dCoefs.Add(Params[2]);
-                        }
-                        catch
-                        {
-                            continue;
-                        }
-                    }
-                    dWls.Reverse();
-                    dHzs.Reverse();
-                    dCoefs.Reverse();
-
-                    pWls = dWls.ToArray();
-                    pHzs = dHzs.ToArray();
-                    pCoefs = dCoefs.ToArray();
-                }
-
-              
-
-                public static void Get_WLData_fromDevString(string datastring, int NumberOfParamsInString, float[] pPars)
-                {
-                    int startindex = 0; bool startfound = false;
-                    int finishindex = 0; bool finishfound = false;
-                    List<float> datavalues = new List<float>();
-
-                    for (int i = 0; i < datastring.Length; i++)
-                    {
-                        if ((datastring[i] != ' ') && ((Char.IsDigit(datastring[i])) || (datastring[i] == '.') || (datastring[i] == ',') || (datastring[i] == '-')))
-                        {
-                            if (startfound)
-                            {
-                                finishindex++;
-                            }
-                            else
-                            {
-                                startindex = i;
-                                startfound = true;
-                            }
-                        }
-                        else
-                        {
-                            if (startfound)
-                            {
-                                finishindex = i;
-                                finishfound = true;
-                            }
-                        }
-                        if (startfound && finishfound)
-                        {
-                            string data = datastring.Substring(startindex, finishindex - startindex);
-                            double result = 0;
-                            double.TryParse((data.Replace(',', '.')),System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture,out result);
-                            datavalues.Add((float)result);
-                            startfound = finishfound = false;
-                        }
-                    }
-                    if (startfound && !finishfound)
-                    {
-                        string data = datastring.Substring(startindex);
-                        double result = 0;
-                        double.TryParse((data.Replace(',', '.')), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out result);
-                        datavalues.Add((float)result);
-                    }
-                    for (int i = 0; i < NumberOfParamsInString; i++) { pPars[i] = datavalues[i]; }
-                }
-
-                public static void Get_Data_fromDevFile(string[] AllStrings,  out List<float[]> Colomns)
-                {
-                    List<float[]> DataRows = new List<float[]>();
-                    List<float> Params = new List<float>();
-                    for (int i = 0; i < AllStrings.Length; ++i)
-                    {
-                        try
-                        {
-                            Get_Data_fromString(AllStrings[i], ref Params);
-                            DataRows.Add(Params.ToArray());
-                        }
-                        catch
-                        {
-                            continue;
-                        }
-                    }
-                    if (DataRows[0][0] < DataRows[DataRows.Count - 1][0]) DataRows.Reverse();
-                    Colomns = new List<float[]>();
-                    for (int i = 0; i < DataRows[0].Length; i++)
-                    {
-                        float[] Colomn_of_vals = new float[DataRows.Count];
-                        for (int j = 0; j < Colomn_of_vals.Length; j++)
-                        {
-                            Colomn_of_vals[j] = DataRows[j][i];
-                        }
-                        Colomns.Add(Colomn_of_vals);
-                    }
-                }
-                public static void Get_Data_fromString(string datastring, ref List<float> pPars)
-                {
-                    int startindex = 0; bool startfound = false;
-                    int finishindex = 0; bool finishfound = false;
-                    List<float> datavalues = new List<float>();
-
-                    //Оказывается, не во всех системах все читается корректно. Делаем проверку
-                    bool isDotNeeded = false;
-                    double datastr = 0;
-                    try { datastr = Convert.ToDouble(("0.1155").Replace('.', ',')); isDotNeeded = false; }
-                    catch { isDotNeeded = true; }
-                    try { datastr = Convert.ToDouble(("0,1155").Replace(',', '.')); isDotNeeded = true; }
-                    catch { isDotNeeded = false; }
-
-
-                    for (int i = 0; i < datastring.Length; i++)
-                    {
-                        if (((datastring[i] != ' ') || (datastring[i] != '\t'))
-                            && ((Char.IsDigit(datastring[i])) || (datastring[i] == '.') || (datastring[i] == ',') || (datastring[i] == '-')))
-                        {
-                            if (startfound)
-                            {
-                                finishindex++;
-                            }
-                            else
-                            {
-                                startindex = i;
-                                startfound = true;
-                            }
-                        }
-                        else
-                        {
-                            if (startfound)
-                            {
-                                finishindex = i;
-                                finishfound = true;
-                            }
-                        }
-                        if (startfound && finishfound)
-                        {
-                            double result = 0;
-                            string data = datastring.Substring(startindex, finishindex - startindex);
-                            double.TryParse((data.Replace(',', '.')), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out result);
-                            double.TryParse((data.Replace(',', '.')), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out result);
-                            datavalues.Add((float)result);
-                            startfound = finishfound = false;
-                        }
-                    }
-                    if (startfound && !finishfound)
-                    {
-                        string data = datastring.Substring(startindex);
-                        double result = 0;
-                        double.TryParse((data.Replace(',', '.')), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out result);
-                        datavalues.Add((float)result);
-                    }
-                    pPars = datavalues;
-
-                }
-            }
-            public class Processing
-            {
-                public static string RemoveZeroBytesFromString(string param)
-                {
-                    string result = param;
-                    while (result.Length!=0)
-                    {
-                        if (result.Last() == '\0') result = RemoveZeroByteFromTheEnd(result);
-                        else break;                      
-                    }
-                    if (result.Length == 0) result = "undefined";
-                    result += '\0';
-                    return result;
-                }
-                public static string RemoveZeroByteFromTheEnd(string param)
-                {
-                    return ((param.Last()=='\0')? param.Remove(param.Length - 1) : param);
-                }
-            }
-        }
     }
 }
