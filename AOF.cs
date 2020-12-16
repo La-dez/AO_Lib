@@ -2006,7 +2006,7 @@ namespace AO_Lib
 
             public override string Ask_required_dev_file()
             {
-                return ("(special *.dev file)");
+                return ("ampl_aof_IR.dev");
             }
           
             public static unsafe int Search_Devices(out string[] FilterNames, out string[] FilterSerials)
