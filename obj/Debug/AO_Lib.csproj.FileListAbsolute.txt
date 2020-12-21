@@ -26,7 +26,6 @@ D:\Работа\Программы (мои разработки)\Спектро�
 D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\Debug\AO_Lib.pdb
 C:\Dev\AO_Lib\bin\Debug\AO_Lib.dll
 C:\Dev\AO_Lib\bin\Debug\AO_Lib.pdb
-C:\Dev\AO_Lib\obj\Debug\AO_Lib.csprojAssemblyReference.cache
 C:\Dev\AO_Lib\obj\Debug\AO_Lib.csproj.CoreCompileInputs.cache
 C:\Dev\AO_Lib\obj\Debug\AO_Lib.dll
 C:\Dev\AO_Lib\obj\Debug\AO_Lib.pdb

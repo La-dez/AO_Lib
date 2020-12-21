@@ -48,6 +48,8 @@ namespace AO_Lib
         //private byte[] Own_UsbBuf = new byte[5000];
         //private byte[] Own_ProgrammBuf;
 
+        //UPLOADE
+
         private TcpClient tcpClient = null;
         public TcpClient TcpClient { get { return tcpClient; } }
 
