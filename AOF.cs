@@ -54,6 +54,7 @@ namespace AO_Lib
 
 
             //все о свипе
+            public virtual bool SweepAvailable => false;
             protected abstract bool sAO_Sweep_On { set; get; }
             public bool is_inSweepMode { get { return sAO_Sweep_On; } }
 
@@ -2320,7 +2321,8 @@ namespace AO_Lib
             Emulator = 0,
             VNIIFTRI_Filter_v15,
             VNIIFTRI_Filter_v20,
-            STC_Filter
+            STC_Filter,
+            EthernetFilter
         }
 
     }
