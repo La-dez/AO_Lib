@@ -160,6 +160,8 @@ namespace AO_Lib
             }
             public virtual int Set_Hz(float freq)
             {
+                sAO_Sweep_On = false;
+
                 if ((freq > HZ_Max) || (freq < HZ_Min))
                     throw new Exception(String.Format("Unable to set this freq. Please, enter the ultrasound frequency value in {0} - {1} MHz range.", HZ_Min, HZ_Max));
                 else if (InnerTimer != null)
@@ -465,7 +467,7 @@ namespace AO_Lib
                 return datalist;
             }
         }
-        public class Emulator : AO_Filter
+        public class Emulator : AO_Filter, ISweepable
         {
             public override FilterTypes FilterType { get { return FilterTypes.Emulator; } }
 
@@ -494,6 +496,9 @@ namespace AO_Lib
 
             public override event SetNotifier onSetWl;
             public override event SetNotifier onSetHz;
+
+            public override bool SweepAvailable { get { return true; } }
+            public SweepParameters SweepLastParameters { get; private set; }
 
             public Emulator() : base()
             {
@@ -526,6 +531,7 @@ namespace AO_Lib
                 onSetHz?.Invoke(this,WL_Current, HZ_Current);
                 return 0;
             }
+
             public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat)
             {
                 sAO_Sweep_On = true;
@@ -574,6 +580,54 @@ namespace AO_Lib
             public override string Implement_Error(int pCode_of_error)
             {
                 return "Common error";
+            }
+
+            public int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, int steps, double time_up, double time_down)
+            {
+                if (Sweep_range_MHz > HZ_Max - HZ_Min ||
+                        Sweep_range_MHz > AO_FreqDeviation_Max ||
+                        Sweep_range_MHz < 0 ||
+                        MHz_start < HZ_Min ||
+                        MHz_start > HZ_Max ||
+                        (time_up == 0 && time_down == 0) ||
+                        steps <= 0)
+                    throw new Exception("Invalid sweep parameters!");
+
+                if (MHz_start + Sweep_range_MHz > HZ_Max)
+                    MHz_start = HZ_Max - Sweep_range_MHz;
+
+                //Запомним последние установленные значения
+                SweepParameters sweepLastParameters = new SweepParameters();
+                sweepLastParameters.steps = steps;
+                sweepLastParameters.Sweep_range = Sweep_range_MHz;
+                sweepLastParameters.time_up = time_up;
+                sweepLastParameters.time_down = time_down;
+                sweepLastParameters.f0 = MHz_start;
+                SweepLastParameters = sweepLastParameters;
+
+                sAO_Sweep_On = true;
+
+                return 0;
+            }
+
+            public int SetHz_KeepSweep(float freq_MHz, bool keep = true)
+            {
+                int error = Set_Hz(freq_MHz);
+
+                if (sAO_Sweep_On && keep)
+                {
+                    //если свип включен, то устанавливаем последние его параметры с новой частотой
+                    return Set_Sweep_on(freq_MHz,
+                        SweepLastParameters.Sweep_range,
+                        SweepLastParameters.steps,
+                        SweepLastParameters.time_up,
+                        SweepLastParameters.time_down);
+                }
+                else
+                {
+                    Set_Sweep_off();
+                    return error;
+                }
             }
         }
 
@@ -984,7 +1038,7 @@ namespace AO_Lib
         }
 #endif
 
-        public class STC_Filter : AO_Filter
+        public class STC_Filter : AO_Filter, ISweepable
         {
             public override FilterTypes FilterType { get { return FilterTypes.STC_Filter; } }
 
@@ -1023,6 +1077,10 @@ namespace AO_Lib
 #elif X64
             private UInt64 Own_m_hPort = 0;
 #endif
+
+            public override bool SweepAvailable { get { return true; } }
+            public SweepParameters SweepLastParameters { get; private set; }
+
 
             public override bool Bit_inverse_needed { get { return sBit_inverse_needed; } }
 
@@ -1875,6 +1933,18 @@ namespace AO_Lib
 
             public int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, int steps,double time_up,double time_down)
             {
+                if (Sweep_range_MHz > HZ_Max - HZ_Min ||
+                    Sweep_range_MHz > AO_FreqDeviation_Max ||
+                    Sweep_range_MHz < 0 ||
+                    MHz_start < HZ_Min ||
+                    MHz_start > HZ_Max || 
+                    (time_up == 0 && time_down == 0) ||
+                    steps <= 0)
+                    throw new Exception("Invalid sweep parameters!");
+
+                if (MHz_start + Sweep_range_MHz > HZ_Max)
+                    MHz_start = HZ_Max - Sweep_range_MHz;
+
                 //здесь MHz_start = m_f0 - начальна частота в МГц    
                 //Sweep_range_MHz = m_deltaf - девиация частоты в МГц
                 try
@@ -1895,12 +1965,39 @@ namespace AO_Lib
                           code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
                         if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Sweep_on");
                         WriteUsb(count);
+
+                        //Запомним последние установленные значения
+                        SweepParameters sweepLastParameters = new SweepParameters();
+                        sweepLastParameters.steps = steps;
+                        sweepLastParameters.Sweep_range = Sweep_range_MHz;
+                        sweepLastParameters.time_up = time_up;
+                        sweepLastParameters.time_down = time_down;
+                        sweepLastParameters.f0 = MHz_start;
+                        SweepLastParameters = sweepLastParameters;
                     }
                     catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
                     sAO_Sweep_On = true;
                     return (int)FTDIController_lib.FT_STATUS.FT_OK;
                 }
                 catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
+            }
+
+            public int SetHz_KeepSweep(float freq_MHz, bool keep = true)
+            {
+                if(sAO_Sweep_On && keep)
+                {
+                    //если свип включен, то устанавливаем последние его параметры с новой частотой
+                    return Set_Sweep_on(freq_MHz,
+                        SweepLastParameters.Sweep_range,
+                        SweepLastParameters.steps,
+                        SweepLastParameters.time_up,
+                        SweepLastParameters.time_down);
+                }
+                else
+                {
+                    Set_Sweep_off();
+                    return Set_Hz(freq_MHz);
+                }
             }
 
             public int Set_MF_test(List<float> Fr, float uSec)
@@ -2116,7 +2213,8 @@ namespace AO_Lib
             { return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort, count, Own_UsbBuf); }
             public unsafe bool WriteUsb(byte[] ByteMass,int count)
             { return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort, count, ByteMass); }
-#endregion
+
+            #endregion
         }
 
         private static class FTDIController_lib

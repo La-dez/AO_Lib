@@ -727,5 +727,10 @@ namespace AO_Lib
             }
             catch(Exception) { }
         }
+
+        public int SetHz_KeepSweep(float MHz, bool keep = true)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

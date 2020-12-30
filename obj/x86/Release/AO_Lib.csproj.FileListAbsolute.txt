@@ -27,3 +27,9 @@ C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\obj\x86\Release\AO_Lib.csprojAssemblyR
 C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\obj\x86\Release\AO_Lib.dll
 C:\Users\Greg\Desktop\AOF_or_AOLib\AO_Lib\obj\x86\Release\AO_Lib.pdb
 D:\Работа\Программы (мои разработки)\Спектрометры\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.csprojResolveAssemblyReference.cache
+D:\Dev\AO_Lib\bin\x86\Release\AO_Lib.dll
+D:\Dev\AO_Lib\bin\x86\Release\AO_Lib.pdb
+D:\Dev\AO_Lib\obj\x86\Release\AO_Lib.csprojAssemblyReference.cache
+D:\Dev\AO_Lib\obj\x86\Release\AO_Lib.csproj.CoreCompileInputs.cache
+D:\Dev\AO_Lib\obj\x86\Release\AO_Lib.dll
+D:\Dev\AO_Lib\obj\x86\Release\AO_Lib.pdb
