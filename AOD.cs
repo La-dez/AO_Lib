@@ -1688,7 +1688,8 @@ namespace AO_Lib
                 FT_EEPROM_NOT_PRESENT,
                 FT_EEPROM_NOT_PROGRAMMED,
                 FT_INVALID_ARGS,
-                FT_OTHER_ERROR
+                FT_OTHER_ERROR,
+                FT_POWER_PROBLEM // 08.02.2021. In case of problems with connection of the power supply or smth else
             };
 
             public const UInt32 FT_BAUD_300 = 300;

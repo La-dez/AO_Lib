@@ -68,9 +68,11 @@ namespace AO_Lib
 
             public virtual bool Bit_inverse_needed { get { return false; } }
             protected virtual bool sBit_inverse_needed { set; get; }
+
             //все о программируемой перестройке
             protected abstract bool sAO_ProgrammMode_Ready { set; get; }
             public bool is_Programmed { get { return sAO_ProgrammMode_Ready; } }
+
 
             //поля для реализации специальной задержки между перестройками
             public virtual int MS_delay { get; protected set; }// [мс]
@@ -87,6 +89,7 @@ namespace AO_Lib
             public delegate void SetNotifier(AO_Filter sender,float WL_now,float HZ_now);
             public abstract event SetNotifier onSetWl;
             public abstract event SetNotifier onSetHz;
+            
 
             //функционал
             protected AO_Filter()
@@ -1087,6 +1090,10 @@ namespace AO_Lib
             public override event SetNotifier onSetWl;
             public override event SetNotifier onSetHz;
 
+            //timeout set checker
+            private int Timeout_MS = 1000;
+            private System.Diagnostics.Stopwatch Timeout_Timer;
+
             public static class MainCommands
             {
                 public static byte SET_HZ { get { return 0x03; } }
@@ -1111,6 +1118,7 @@ namespace AO_Lib
                 {
                     AOF_Loaded_without_fails = false;
                 }
+                Timeout_Timer = new System.Diagnostics.Stopwatch();
             }
             public STC_Filter(string Descriptor, string Serial) : base()
             {
@@ -1141,6 +1149,7 @@ namespace AO_Lib
                 {
                     AOF_Loaded_without_fails = false;
                 }
+                Timeout_Timer = new System.Diagnostics.Stopwatch();
             }
 
             /// <summary>
@@ -1191,24 +1200,31 @@ namespace AO_Lib
                 base.Set_Hz(freq);
                 if (AOF_Loaded_without_fails)
                 {
+
+                    var code_er = FTDIController.FT_STATUS.FT_OK;
                     try
                     {
                         Own_UsbBuf = Create_byteMass_forHzTune(freq);
-                        var code_er = FTDIController.FT_STATUS.FT_OK;
                         /*  var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
                           code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
                           code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
+                     
+                        Timeout_Timer.Restart();
                         WriteUsb(7);
-                        sWL_Current = Get_WL_via_HZ(freq);
+                        Timeout_Timer.Stop();
+                        if (Timeout_Timer.ElapsedMilliseconds > Timeout_MS) code_er = FTDIController.FT_STATUS.FT_POWER_PROBLEM;
+
+
+                         sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
                         onSetHz?.Invoke(this, WL_Current, HZ_Current);
-                        if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz");
+                        if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz. Status of the problem: " + code_er.ToString());
                         return 0;
                     }
                     catch (Exception exc)
                     {
-
-                        return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
+                        if (code_er == FTDIController.FT_STATUS.FT_POWER_PROBLEM) return (int)FTDIController.FT_STATUS.FT_POWER_PROBLEM;
+                        else return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
                     }
                 }
                 else
@@ -2173,7 +2189,7 @@ namespace AO_Lib
 
             public override int PowerOn()
             {
-                var state = Set_Hz((HZ_Max + HZ_Min) / 2);
+                var state = Set_Wl((WL_Max + WL_Min)/2);
                 sAOF_isPowered = true;
                 return state;
             }
@@ -2245,7 +2261,8 @@ namespace AO_Lib
                 FT_EEPROM_NOT_PRESENT,
                 FT_EEPROM_NOT_PROGRAMMED,
                 FT_INVALID_ARGS,
-                FT_OTHER_ERROR
+                FT_OTHER_ERROR,
+                FT_POWER_PROBLEM // 08.02.2021. In case of problems with connection of the power supply or smth else
             };
 
             public const UIntXX FT_BAUD_300 = 300;
