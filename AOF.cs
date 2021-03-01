@@ -89,13 +89,39 @@ namespace AO_Lib
             public delegate void SetNotifier(AO_Filter sender,float WL_now,float HZ_now);
             public abstract event SetNotifier onSetWl;
             public abstract event SetNotifier onSetHz;
-            
+
+            //очистка
+            private bool disposed = false;
 
             //функционал
             protected AO_Filter()
             {
                 //InitTimer(MS_delay_default);
             }
+
+            ~AO_Filter()
+            {
+                Dispose(false);
+            }
+            public virtual void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+
+            protected virtual void Dispose(bool disposing)
+            {
+                if (!disposed)
+                {
+                    if (disposing)
+                    {
+                        InnerTimer.Dispose();                       
+                    }
+                    PowerOff();
+                    disposed = true;
+                }
+            }
+
             public void InitTimer(int ms_delay)
             {
                 // Create a timer with a two second interval.
@@ -264,7 +290,8 @@ namespace AO_Lib
             public abstract int PowerOff();
             public abstract string Implement_Error(int pCode_of_error);
 
-            public abstract void Dispose();
+            
+           
 
             public virtual float Get_HZ_via_WL(float pWL)
             {
@@ -1093,6 +1120,9 @@ namespace AO_Lib
             //timeout set checker
             private int Timeout_MS = 1000;
             private System.Diagnostics.Stopwatch Timeout_Timer;
+            //disposer
+
+            private bool IsDisposed = false;
 
             public static class MainCommands
             {
@@ -1152,15 +1182,65 @@ namespace AO_Lib
                 Timeout_Timer = new System.Diagnostics.Stopwatch();
             }
 
-            /// <summary>
-            /// Деструктор
-            /// </summary>
-            ~STC_Filter()
+          
+
+            /*  /// <summary>
+              /// Деструктор
+              /// </summary>
+              ~STC_Filter()
+              {
+                  this.PowerOff();
+                  this.Dispose();
+              }*/
+            protected override void Dispose(bool disposing)
             {
-                this.PowerOff();
-                this.Dispose();
+
+                if (IsDisposed) return;
+                if (disposing)
+                {
+                   
+                }
+                IsDisposed = true;
+                // Обращение к методу Dispose базового класса
+                base.Dispose(disposing);
+                Deinit_device();
             }
-         
+
+            public override int PowerOn()
+            {
+                var state = Set_Wl((WL_Max + WL_Min) / 2);
+                sAOF_isPowered = true;
+                return state;
+            }
+
+
+        
+
+
+            public override int PowerOff()
+            {
+                try
+                {
+                    System.Threading.Thread.Sleep(300);
+                    Own_UsbBuf[0] = MainCommands.POWER_OFF; //it means, we will send off command
+
+                    for (int i = 1; i < 2; i++) Own_UsbBuf[i] = 0;
+                    Own_UsbBuf[0] = (byte)FTDIController_lib.Bit_reverse(Own_UsbBuf[0], Bit_inverse_needed);
+                    try { WriteUsb(1); }
+                    catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
+                }
+                catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
+                sAOF_isPowered = false;
+                return 0;
+            }
+
+            protected override int Deinit_device()
+            {
+                System.Threading.Thread.Sleep(100);
+                int result = Convert.ToInt16(AO_Devices.FTDIController_lib.FT_Close(Own_m_hPort));
+                return result;
+            }
+
             /// <summary>
             /// Устанавливает на АОФ заданную длину волны в нм.
             /// </summary>
@@ -1663,7 +1743,7 @@ namespace AO_Lib
                 data_Own_UsbBuf[4] = (byte)(0x00ff & (ivspom >> 8)); ;
                 data_Own_UsbBuf[5] = (byte)ivspom;
                 pcount = total_count;
-                //
+
                 for (i = 0; i < total_count; i++)
                 {
                     data_Own_UsbBuf[i] = (byte)FTDIController_lib.Bit_reverse(data_Own_UsbBuf[i], isInverse_needed);
@@ -1883,7 +1963,7 @@ namespace AO_Lib
                 return Freq_mass_hz;
 
             }
-            public static byte[] Create_byteMass_byKnownParams_012020(int[] Freq_mass_hz, int time_multiplier)
+            public static byte[] Create_byteMass_sweep_byKnownParams_012020(int[] Freq_mass_hz, int time_multiplier)
             {
                 int totalcount = 1 + 2 + 4 * Freq_mass_hz.Length + 2;
                 //1 байт на стартовую команду, 2 - на обозначение длины, 4 на каждую частоту, 2 на множитель ramp
@@ -2111,12 +2191,7 @@ namespace AO_Lib
                 return 0;
             }
 
-            protected override int Deinit_device()
-            {
-                System.Threading.Thread.Sleep(100);
-                int result = Convert.ToInt16(AO_Devices.FTDIController_lib.FT_Close(Own_m_hPort));
-                return result;
-            }
+
 
             public override string Ask_required_dev_file()
             {
@@ -2187,34 +2262,7 @@ namespace AO_Lib
                 return ((FTDIController_lib.FT_STATUS)pCode_of_error).ToString();
             }
 
-            public override int PowerOn()
-            {
-                var state = Set_Wl((WL_Max + WL_Min)/2);
-                sAOF_isPowered = true;
-                return state;
-            }
-
-            public override int PowerOff()
-            {
-                try
-                {
-                    System.Threading.Thread.Sleep(300);
-                    Own_UsbBuf[0] = MainCommands.POWER_OFF; //it means, we will send off command
-                    
-                    for (int i = 1; i < 2; i++) Own_UsbBuf[i] = 0;
-                    Own_UsbBuf[0] = (byte)FTDIController_lib.Bit_reverse(Own_UsbBuf[0], Bit_inverse_needed);
-                    try { WriteUsb(1); }
-                    catch { return (int)FTDIController_lib.FT_STATUS.FT_IO_ERROR; }
-                }
-                catch { return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR; }
-                sAOF_isPowered = false;
-                return 0;
-            }
            
-            public override void Dispose()
-            {
-                Deinit_device();
-            }
            
 #region Перегрузки WriteUsb
             //Перегрузки, которую можно юзать
