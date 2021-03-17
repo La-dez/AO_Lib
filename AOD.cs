@@ -360,7 +360,6 @@ namespace AO_Lib
                 if (result < 2)
                     result = 3000;
                 return result;
-                return 0;
             }
             public virtual System.Drawing.PointF Sweep_Recalculate_borders(float pHZ_needed, float pHZ_Radius,int CellInd)
             {
