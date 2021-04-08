@@ -215,16 +215,6 @@ namespace AO_Lib
             }
 
             public abstract int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat);
-           /* {
-                sAO_Sweep_On = true;
-
-                byte[] Own_UsbBuf = new byte[5000];
-                int count = 0;
-                int Multiplier = 0;
-                int[] HZMass = STC_Filter.Calculate_sweep_params_012020(MHz_start, Sweep_range_MHz, Period, true, ref Multiplier);
-                Own_UsbBuf = STC_Filter.Create_byteMass_byKnownParams_012020(HZMass, Multiplier);
-                return 0;
-            }*/
             public abstract int Set_Sweep_off();
 
             public abstract string Ask_required_dev_file();
@@ -439,20 +429,12 @@ namespace AO_Lib
                 string[] Descriptor_forSTCFilter; string[] Serial_forSTCFilter;
                 Devices_per_type[0] = STC_Filter.Search_Devices(out Descriptor_forSTCFilter, out Serial_forSTCFilter);
                 AO_Filter retFil = null;
-#if X64
+
                 if (Devices_per_type[0] != 0)
                     retFil = (new STC_Filter(Descriptor_forSTCFilter.Last(), Serial_forSTCFilter.Last()));
                 else
                     retFil =  (new Emulator());
-#elif X86
-                Devices_per_type[1] = VNIIFTRI_Filter_v15.Search_Devices();
-                Devices_per_type[2] = VNIIFTRI_Filter_v20.Search_Devices();
-                if (Devices_per_type[0] != 0) retFil =  (new STC_Filter(Descriptor_forSTCFilter.Last(), Serial_forSTCFilter.Last()));
 
-                else if (Devices_per_type[1] != 0) retFil =  (new VNIIFTRI_Filter_v15());
-                else if (Devices_per_type[2] != 0) retFil =  (new VNIIFTRI_Filter_v20());
-                else retFil =  (new Emulator());
-#endif
                 return retFil;
             }
             public static List<AO_Filter> Find_all_filters()
@@ -460,12 +442,7 @@ namespace AO_Lib
                 var FinalList = new List<AO_Filter>();
                 //search of filters of any types
                 var l1 = List_STC_Filters();
-                var l2 = List_VNIIFTRI_Filters_v15();
-                var l3 = List_VNIIFTRI_Filters_v20();
-                FinalList = ConcatLists_ofFilters(l1, l2, l3);
-
-
-               // if (FinalList.Count == 0) FinalList.Add(new Emulator());
+                FinalList = ConcatLists_ofFilters(l1);
                 return FinalList;
             }
             private static List<AO_Filter> List_STC_Filters()
@@ -477,16 +454,6 @@ namespace AO_Lib
                 {
                     FinalList.Add(new STC_Filter(FilterNames[i], FilterSerials[i]));
                 }
-                return FinalList;
-            }
-            private static List<AO_Filter> List_VNIIFTRI_Filters_v15()
-            {
-                var FinalList = new List<AO_Filter>();
-                return FinalList;
-            }
-            private static List<AO_Filter> List_VNIIFTRI_Filters_v20()
-            {
-                var FinalList = new List<AO_Filter>();
                 return FinalList;
             }
             private static List<AO_Filter> ConcatLists_ofFilters(params List<AO_Filter>[] filters)
@@ -660,413 +627,6 @@ namespace AO_Lib
                 }
             }
         }
-
-#if X86
-        public class VNIIFTRI_Filter_v15 : AO_Filter //идея: сделать 2 класса чисто на импорт, а обвязку оставить общую
-        {
-            public override FilterTypes FilterType { get { return FilterTypes.VNIIFTRI_Filter_v15; } }
-
-            protected override string _FilterName { set; get; }
-            protected override string _FilterSerial { set; get; }
-            protected override string FilterCfgName { set; get; }
-            protected override string FilterCfgPath { set; get; }
-            protected override string DllName { set; get; }
-
-            protected override float[] HZs { set; get; }
-            protected override float[] WLs { set; get; }
-            protected override float[] Intensity { set; get; }
-            protected override bool AOF_Loaded_without_fails { set; get; }
-            protected override bool sAOF_isPowered { set; get; }
-
-            public override float WL_Max { get { return WLs[WLs.Length - 1]; } }
-            public override float WL_Min { get { return WLs[0]; } }
-            public override float HZ_Max { get { return HZs[0]; } }
-            public override float HZ_Min { get { return HZs[WLs.Length - 1]; } }
-
-            protected override bool sAO_Sweep_On { set; get; }
-            protected override bool sAO_ProgrammMode_Ready { set; get; }
-
-            public override event SetNotifier onSetWl;
-            public override event SetNotifier onSetHz;
-
-            public VNIIFTRI_Filter_v15() : base()
-            {
-                Init_device(0);
-                _FilterName = Ask_required_dev_file();
-                _FilterSerial = "0 - number in the list of VNIIFTRI_Filter_v15 Filters";
-                sAO_ProgrammMode_Ready = false;
-            }
-            public VNIIFTRI_Filter_v15(int number) : base()
-            {
-                Init_device((uint)number);
-                _FilterName = Ask_required_dev_file();
-                _FilterSerial = number.ToString() + " - number in the list of VNIIFTRI_Filter_v15 Filters";
-                sAO_ProgrammMode_Ready = false;
-            }
-            ~VNIIFTRI_Filter_v15()
-            {
-                this.PowerOff();
-                this.Dispose();
-            }
-
-            public override int Set_Wl(float pWL)
-            {
-                base.Set_Wl(pWL);
-                sWL_Current = pWL;
-                sHZ_Current = Get_HZ_via_WL(pWL);
-                int code =  AOM_SetWL(pWL);
-                onSetWl?.Invoke(this, WL_Current, HZ_Current);
-                return code;
-            }
-            public override int Set_Hz(float freq)
-            {
-                base.Set_Hz(freq);
-                sWL_Current = Get_WL_via_HZ(freq);
-                sHZ_Current = freq;
-                int code = AOM_SetWL((int)Math.Round(sWL_Current));
-                onSetHz?.Invoke(this, WL_Current, HZ_Current);
-                return code;
-            }
-            public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat)
-            {
-                sAO_Sweep_On = false;
-                return (int)Status.AOM_OTHER_ERROR;
-            }
-            public override int Set_Sweep_off()
-            {
-                sAO_Sweep_On = false;
-                return (int)Status.AOM_OTHER_ERROR;
-            }
-            protected override int Init_device(uint number)
-            {
-                AOM_Init((int)number);
-                return 0;
-            }
-            protected override int Deinit_device()
-            {
-                return AOM_Close();
-            }
-            public override string Ask_required_dev_file()
-            {
-                StringBuilder dev_name = new StringBuilder(7);
-                AOM_GetID(dev_name);
-                return dev_name.ToString();
-            }
-            public override int Read_dev_file(string path)
-            {
-                float min=0, max=0;
-                try
-                {
-                    var Data_from_dev = Helper.Files.Read_txt(path);
-                    float[] pWLs, pHZs, pCoefs;
-                    Helper.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
-                    Helper.Math.Interpolate_curv(pWLs, pHZs);
-                    Helper.Math.Interpolate_curv(pWLs, pCoefs);
-                    WLs = pWLs;
-                    HZs = pHZs;
-                    Intensity = pCoefs;
-                    int state = AOM_LoadSettings(path,ref min, ref max);
-                    FilterCfgPath = path;
-                    FilterCfgName = System.IO.Path.GetFileName(path);
-                    if ((min != WL_Min) || (max != WL_Max)|| (state!=0)) throw new Exception();
-                }
-                catch
-                {
-                    return -1;
-                }
-                return 0;
-            }
-
-            public override int PowerOn()
-            {
-                var retval = AOM_PowerOn();
-                if (retval == 0) sAOF_isPowered = true;
-                else sAOF_isPowered = false;
-                return retval;
-            }
-            public override int PowerOff()
-            {
-                var retval = AOM_PowerOff();
-                if (retval == 0) sAOF_isPowered = false;
-                else sAOF_isPowered = true;
-                return retval;
-            }
-            public override void Dispose()
-            {
-                Deinit_device();
-            }
-            public static int Search_Devices()
-            {
-                return AOM_GetNumDevices();
-            }
-            public override string Implement_Error(int pCode_of_error)
-            {
-                return ((Status)pCode_of_error).ToString();
-            }
-
-#region DllFunctions
-            public const string basepath = "aom_old.dll";
-            //Назначение: функция возвращает число подключенных акустооптических фильтров.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_GetNumDevices();
-
-            //Назначение: функция производит инициализацию подключенного акустооптического фильтра 
-            //(обычное значение devicenum = 0, т.е. первое).
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_Init(int devicenum);
-
-            //Назначение: функция выполняет деинициализацию акустооптического фильтра.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_Close();
-
-            //Назначение: функция записывает в переменную id значение идентификатор подключенного акустооптического фильтра.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern int AOM_GetID([MarshalAs(UnmanagedType.LPStr)] StringBuilder id);
-
-            //Назначение: функция производит загрузку значений максимальной
-            //(wlmax) и минимальной длины волны (wlmin) из файла с именем filename с расширением *.dev.
-            [DllImport(basepath,
-                CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
-            public static extern int AOM_LoadSettings(string filename, ref float wlmin, ref float wlmax);
-
-            //Назначение: функция выполняет выгрузку установленных значений из калибровочного файла формата *.dev.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_UnloadSettings();
-
-            //Назначение: функция производит установку требуемой частоты акустооптического фильтра
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_SetWL(float wl);
-
-            //Назначение: функция производит включение акустооптического фильтра.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_PowerOn();
-
-            //Назначение: функция производит выключение акустооптического фильтра.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_PowerOff();
-
-            private enum Status
-            {
-                AOM_OK = 0,
-                AOM_ALREADY_INITIALIZED,
-                AOM_ALREADY_LOADED,
-                AOM_NOT_INITIALIZED,
-                AOM_DEVICE_NOTFOUND,
-                AOM_BAD_RESPONSE,
-                AOM_NULL_POINTER,
-                AOM_FILE_NOTFOUND,
-                AOM_FILE_READ_ERROR,
-                AOM_WINUSB_INIT_FAIL,
-                AOM_NOT_LOADED,
-                AOM_RANGE_ERROR,
-                AOM_OTHER_ERROR
-            }            
-#endregion
-        }
-        public class VNIIFTRI_Filter_v20 : AO_Filter //идея: сделать 2 класса чисто на импорт, а обвязку оставить общую
-        {
-            public override FilterTypes FilterType { get { return FilterTypes.VNIIFTRI_Filter_v20; } }
-
-            protected override string _FilterName { set; get; }
-            protected override string _FilterSerial { set; get; }
-            protected override string FilterCfgName { set; get; }
-            protected override string FilterCfgPath { set; get; }
-            protected override string DllName { set; get; }
-
-            protected override float[] HZs { set; get; }
-            protected override float[] WLs { set; get; }
-            protected override float[] Intensity { set; get; }
-            protected override bool AOF_Loaded_without_fails { set; get; }
-            protected override bool sAOF_isPowered { set; get; }
-
-            public override float WL_Max { get { return WLs[WLs.Length - 1]; } }
-            public override float WL_Min { get { return WLs[0]; } }
-            public override float HZ_Max { get { return HZs[0]; } }
-            public override float HZ_Min { get { return HZs[WLs.Length - 1]; } }
-
-            protected override bool sAO_Sweep_On { set; get; }
-            protected override bool sAO_ProgrammMode_Ready { set; get; }
-
-            public override event SetNotifier onSetWl;
-            public override event SetNotifier onSetHz;
-
-            public VNIIFTRI_Filter_v20() : base()
-            {
-                Init_device(0);
-                _FilterName = Ask_required_dev_file();
-                _FilterSerial = "0 - number in the list of VNIIFTRI_Filter_v20 Filters";
-                sAO_ProgrammMode_Ready = false;
-            }
-
-            public VNIIFTRI_Filter_v20(int number) : base()
-            {
-                Init_device((uint)number);
-                _FilterName = Ask_required_dev_file();
-                _FilterSerial = number.ToString() + " - number in the list of VNIIFTRI_Filter_v20 Filters";
-                sAO_ProgrammMode_Ready = false;
-            }
-            ~VNIIFTRI_Filter_v20()
-            {
-                this.PowerOff();
-                this.Dispose();
-            }
-            public override int Set_Wl(float pWL)
-            {
-                base.Set_Wl(pWL);
-                sWL_Current = pWL;
-                sHZ_Current = Get_HZ_via_WL(pWL);
-                int code =  AOM_SetWL(pWL);
-                onSetWl?.Invoke(this, WL_Current, HZ_Current);
-                return code;
-            }
-            public override int Set_Hz(float freq)
-            {
-                base.Set_Hz(freq);
-                sWL_Current = Get_WL_via_HZ(freq);
-                sHZ_Current = freq;
-                int code = AOM_SetWL((int)Math.Round(sWL_Current));
-                onSetHz?.Invoke(this, WL_Current, HZ_Current);
-                return code;
-            }
-            public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat)
-            {
-                sAO_Sweep_On = false;
-                return (int)Status.AOM_OTHER_ERROR;
-            }
-            public override int Set_Sweep_off()
-            {
-                sAO_Sweep_On = false;
-                return (int)Status.AOM_OTHER_ERROR;
-            }
-            protected override int Init_device(uint number)
-            {
-                AOM_Init((int)number);
-                return 0;
-            }
-            protected override int Deinit_device()
-            {
-                return AOM_Close();
-            }
-            public override string Ask_required_dev_file()
-            {
-                StringBuilder dev_name = new StringBuilder(7);
-                AOM_GetID(dev_name);
-                return dev_name.ToString();
-            }
-
-            public override int Read_dev_file(string path)
-            {
-                float min = 0, max = 0;
-                try
-                {
-                    var Data_from_dev = Helper.Files.Read_txt(path);
-                    float[] pWLs, pHZs, pCoefs;
-                    Helper.Files.Get_WLData_byKnownCountofNumbers(3, Data_from_dev.ToArray(), out pWLs, out pHZs, out pCoefs);
-                    Helper.Math.Interpolate_curv(pWLs, pHZs);
-                    Helper.Math.Interpolate_curv(pWLs, pCoefs);
-                    WLs = pWLs;
-                    HZs = pHZs;
-                    Intensity = pCoefs;
-                    int state = AOM_LoadSettings(path, ref min, ref max);
-                    FilterCfgPath = path;
-                    FilterCfgName = System.IO.Path.GetFileName(path);
-                    if ((min != WL_Min) || (max != WL_Max) || (state != 0)) throw new Exception();
-                }
-                catch
-                {
-                    return -1;
-                }
-                return 0;
-            }
-
-            public override int PowerOn()
-            {
-                var retval = AOM_PowerOn();
-                if (retval == 0) sAOF_isPowered = true;
-                else sAOF_isPowered = false;
-                return retval;
-            }
-            public override int PowerOff()
-            {
-                var retval = AOM_PowerOff();
-                if (retval == 0) sAOF_isPowered = false;
-                else sAOF_isPowered = true;
-                return retval;
-            }
-            public override void Dispose()
-            {
-                Deinit_device();
-            }
-            public static int Search_Devices()
-            {
-
-                return AOM_GetNumDevices();
-            }
-            public override string Implement_Error(int pCode_of_error)
-            {
-                return ((Status)pCode_of_error).ToString();
-            }
-
-#region DllFunctions
-            public const string basepath = "aom_new.dll";
-            //Назначение: функция возвращает число подключенных акустооптических фильтров.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_GetNumDevices();
-
-            //Назначение: функция производит инициализацию подключенного акустооптического фильтра 
-            //(обычное значение devicenum = 0, т.е. первое).
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_Init(int devicenum);
-
-            //Назначение: функция выполняет деинициализацию акустооптического фильтра.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_Close();
-
-            //Назначение: функция записывает в переменную id значение идентификатор подключенного акустооптического фильтра.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-            public static extern int AOM_GetID([MarshalAs(UnmanagedType.LPStr)] StringBuilder id);
-
-            //Назначение: функция производит загрузку значений максимальной
-            //(wlmax) и минимальной длины волны (wlmin) из файла с именем filename с расширением *.dev.
-            [DllImport(basepath,
-                CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
-            public static extern int AOM_LoadSettings(string filename, ref float wlmin, ref float wlmax);
-
-            //Назначение: функция выполняет выгрузку установленных значений из калибровочного файла формата *.dev.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_UnloadSettings();
-
-            //Назначение: функция производит установку требуемой частоты акустооптического фильтра
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_SetWL(float wl);
-
-            //Назначение: функция производит включение акустооптического фильтра.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_PowerOn();
-
-            //Назначение: функция производит выключение акустооптического фильтра.
-            [DllImport(basepath, CallingConvention = CallingConvention.Cdecl)]
-            public static extern int AOM_PowerOff();
-
-            private enum Status
-            {
-                AOM_OK = 0,
-                AOM_ALREADY_INITIALIZED,
-                AOM_ALREADY_LOADED,
-                AOM_NOT_INITIALIZED,
-                AOM_DEVICE_NOTFOUND,
-                AOM_BAD_RESPONSE,
-                AOM_NULL_POINTER,
-                AOM_FILE_NOTFOUND,
-                AOM_FILE_READ_ERROR,
-                AOM_WINUSB_INIT_FAIL,
-                AOM_NOT_LOADED,
-                AOM_RANGE_ERROR,
-                AOM_OTHER_ERROR
-            }
-#endregion
-        }
-#endif
 
         public class STC_Filter : AO_Filter, ISweepable
         {
@@ -1285,17 +845,12 @@ namespace AO_Lib
                     try
                     {
                         Own_UsbBuf = Create_byteMass_forHzTune(freq);
-                        /*  var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                          code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                          code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
                      
                         Timeout_Timer.Restart();
                         WriteUsb(7);
                         Timeout_Timer.Stop();
                         if (Timeout_Timer.ElapsedMilliseconds > Timeout_MS) code_er = FTDIController.FT_STATUS.FT_POWER_PROBLEM;
-
-
-                         sWL_Current = Get_WL_via_HZ(freq);
+                        sWL_Current = Get_WL_via_HZ(freq);
                         sHZ_Current = freq;
                         onSetHz?.Invoke(this, WL_Current, HZ_Current);
                         if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz. Status of the problem: " + code_er.ToString());
@@ -1322,9 +877,6 @@ namespace AO_Lib
                 try
                 {
                     var code_er = FTDIController.FT_STATUS.FT_OK;
-                    /*  var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                      code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                      code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
                     WriteUsb(buf, 7);
                     if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz_via_bytemass");
                     return 0;
@@ -1337,49 +889,44 @@ namespace AO_Lib
             }
 
             /// <summary>
-            /// Устанавливает на АОФ заданную частоту в МГц. Позволяет задать коэффициент ослабления.
-            /// Пока что (21.01.2020) доступна только для заданного класса. По основному содержимому не отличается от Set_Hz(float freq)
+            /// Устанавливает на АОФ заданную частоту в МГц. Позволяет задать коэффициент усиления.
             /// </summary>
-            public int Set_Hz(float freq,float pCoef_Power_Decrement = 000)
-            {
+public int Set_Hz(float freq,float pCoef_Power_Decrement = 000)
+{
                 
-                if (AOF_Loaded_without_fails)
-                {
-                    try
-                    {
-                        if (pCoef_Power_Decrement == 0)
-                        {
-                            Own_UsbBuf = Create_byteMass_forHzTune(freq);
-                            sCurrent_Attenuation = (int)pCoef_Power_Decrement;
-                        }
-                        else
-                        {
-                            Own_UsbBuf = Create_byteMass_forHzTune(freq, (uint)pCoef_Power_Decrement);
-                            sCurrent_Attenuation = (int)pCoef_Power_Decrement;
-                        }
-                        var code_er = FTDIController.FT_STATUS.FT_OK;
-                  /*      var code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();
-                        code_er = FTDIController.FT_Purge(Own_m_hPort, FTDIController.FT_PURGE_RX | FTDIController.FT_PURGE_TX); // все что было в буфере вычищается
-                        code_er = FTDIController.FT_ResetDevice(Own_m_hPort); //ResetDevice();*/
-
-                        WriteUsb(7);//установка частоты происходит фактически тут
-                        sWL_Current = Get_WL_via_HZ(freq);
-                        sHZ_Current = freq;
-                        onSetHz?.Invoke(this, WL_Current, HZ_Current);
-                        if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz");
-                        return 0;
-                    }
-                    catch(Exception exc)
-                    {
-
-                        return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
-                    }
-                }
-                else
-                {
-                    return (int)FTDIController_lib.FT_STATUS.FT_DEVICE_NOT_FOUND;
-                }
+    if (AOF_Loaded_without_fails)
+    {
+        try
+        {
+            if (pCoef_Power_Decrement == 0)
+            {
+                Own_UsbBuf = Create_byteMass_forHzTune(freq);
+                sCurrent_Attenuation = (int)pCoef_Power_Decrement;
             }
+            else
+            {
+                Own_UsbBuf = Create_byteMass_forHzTune(freq, (uint)pCoef_Power_Decrement);
+                sCurrent_Attenuation = (int)pCoef_Power_Decrement;
+            }
+            var code_er = FTDIController.FT_STATUS.FT_OK;
+            WriteUsb(7);
+            sWL_Current = Get_WL_via_HZ(freq);
+            sHZ_Current = freq;
+            onSetHz?.Invoke(this, WL_Current, HZ_Current);
+            if (code_er != FTDIController.FT_STATUS.FT_OK) throw new Exception("Error ib AO_lib on Set_Hz");
+            return 0;
+        }
+        catch(Exception exc)
+        {
+
+            return (int)FTDIController_lib.FT_STATUS.FT_OTHER_ERROR;
+        }
+    }
+    else
+    {
+        return (int)FTDIController_lib.FT_STATUS.FT_DEVICE_NOT_FOUND;
+    }
+}
 
             /// <summary>
             /// Создает по заданным параметром массив байт для перестройки на определенную частоту.
@@ -1772,14 +1319,11 @@ namespace AO_Lib
                 ulong const1 = (ulong)Math.Pow(2.0, 32.0);
                 byte[] data_iFreq = new byte[4];
                 //startbyte - 1 byte
-                byte SByte = 0xBB;
-               
+                byte SByte = 0xBB;            
                 //Number of freq - 2 bytes
                 byte[] N_Mass = Helper.Processing.uInt_to_2bytes((uint)freq_num);
-
                 //zero byte -1 byte
                 byte ZByte = 0x00;
-
                 //time calculations - 2 bytes
                 double fsys_mcu = 1.7f * (0.5f * 75e6);
                 double mfreq_sys = Reference_frequency / 1e6;
@@ -1789,10 +1333,9 @@ namespace AO_Lib
                 if ((step_need> step_max) || (step_need < step_min)) return null;
                 int Time_multiplier = (int)(step_need / step_min);
                 byte[] TimeMass = Helper.Processing.uInt_to_2bytes((uint)Time_multiplier);
-
                 //freq calculations and fulfilling
                 for (int i = 0; i < freq_num; i++)
-                { //передача начальной, конечной частот и шага
+                { 
                     ulong data_lvspom = (ulong)((freq_mass[i]) * (const1 / (mfreq_sys)));
                     data_iFreq = Helper.Processing.uLong_to_4bytes(data_lvspom);
                     data_buf[4 + (i * 4)] = data_iFreq[0];
@@ -1806,7 +1349,6 @@ namespace AO_Lib
                 data_buf[3] = ZByte;
                 data_buf[1 + 2 + 1 + freq_num * 4 + 0] = TimeMass[0];
                 data_buf[1 + 2 + 1 + freq_num * 4 + 1] = TimeMass[1];
-
                 return data_buf;
             }
 
@@ -1825,21 +1367,15 @@ namespace AO_Lib
                 bool mode,
                 bool m_repeat = true)
             {   
-                float[] freq = new float[3]; // unsigned long lvspom; unsigned int ivspom; float fvspom, freq[3], minstep;
+                float[] freq = new float[3]; 
                 byte[] data_buf = new byte[26];
                 double fsys_mcu = 1.7f * (0.5f * 75e6);
                 double mfreq_sys = Reference_frequency/1e6; 
-
-                //выставляем таймер для того, чтобы определять режим повтора sweep
-                uint timer_up = (uint)(65536 - 1e-6 * T_up_sweep * fsys_mcu / 2); //расчеты для таймера , mtup_sweep - время подъема
-                uint timer_down = (uint)(65536 - 1e-6 * T_down_sweep * fsys_mcu / 2);//расчеты для таймера перезапускающего свип, mtdown_sweep - время спуска
-                                                                                //начальный уровень амплитуды, default
-                                                                                //ivspom = 1700;
-                                                                                //Амплитуа из калибровочного файла, частота задается в МГц
-                float minstep = (float)(4.0 / mfreq_sys); //in usec
-                
-                if (mN_sweep > 0) { freq[2] = mdeltafreq_sweep / mN_sweep; } //шаг изменения частоты, mN_sweep — количество шагов в sweep
-                freq[0] = mfreq0_sweep; freq[1] = mfreq0_sweep + mdeltafreq_sweep; // начальная и конечная частоты
+                uint timer_up = (uint)(65536 - 1e-6 * T_up_sweep * fsys_mcu / 2); 
+                uint timer_down = (uint)(65536 - 1e-6 * T_down_sweep * fsys_mcu / 2);                                                                            
+                float minstep = (float)(4.0 / mfreq_sys); //in usec              
+                if (mN_sweep > 0) { freq[2] = mdeltafreq_sweep / mN_sweep; } 
+                freq[0] = mfreq0_sweep; freq[1] = mfreq0_sweep + mdeltafreq_sweep; 
                 byte delayt1 = (byte)Math.Round(T_up_sweep / (mN_sweep * minstep));
                 byte delayt2 = (byte)Math.Round(T_down_sweep / (mN_sweep * minstep));
                 data_buf[0] = 0x0b;
@@ -1854,28 +1390,24 @@ namespace AO_Lib
                     data_buf[2 + i * 4 + 2] = data_iFreq[2];
                     data_buf[2 + i * 4 + 3] = data_iFreq[3];
                 }
-               /* if (mdwell.GetCheck() == 1) { tx[14] = 1; }
-                else { tx[14] = 0; } */
-                data_buf[14] = Convert.ToByte(!mode);//dwell = true, если режим пила активирован(mode = false)
-                data_buf[15] = Convert.ToByte(mode); //режим — пила(false) или треугольник(true)
+                data_buf[14] = Convert.ToByte(!mode);
+                data_buf[15] = Convert.ToByte(mode);
                 byte[] data_mass = new byte[2];
-                uint LocalAmpl = (uint)Get_Intensity_via_HZ((mfreq0_sweep + (float)mdeltafreq_sweep / 2)); // ivspom = patof->GetAmplForFreq(mfreq);
+                uint LocalAmpl = (uint)Get_Intensity_via_HZ((mfreq0_sweep + (float)mdeltafreq_sweep / 2)); 
                 data_mass = Helper.Processing.uInt_to_2bytes(LocalAmpl);
                 data_buf[16] = data_mass[0];
-                data_buf[17] = data_mass[1]; //амплитуда
+                data_buf[17] = data_mass[1]; 
                 data_mass = Helper.Processing.uInt_to_2bytes(timer_up);
                 data_buf[18] = data_mass[0];
-                data_buf[19] = data_mass[1];// шаг таймера, определяющего направление счета
+                data_buf[19] = data_mass[1];
                 data_mass = Helper.Processing.uInt_to_2bytes(timer_down);
                 data_buf[20] = data_mass[0];
-                data_buf[21] = data_mass[1];//шаг таймера, определяющего направдение счета
+                data_buf[21] = data_mass[1];
 
-                data_buf[22] = Convert.ToByte(m_repeat); // m_repeat - параметр многократности запуска
-                data_buf[23] = delayt1; //задержки для аппаратного таймера ramp
-                data_buf[24] = delayt2; //задержки ramp
+                data_buf[22] = Convert.ToByte(m_repeat); 
+                data_buf[23] = delayt1; 
+                data_buf[24] = delayt2; 
                 return data_buf;
-              //  Write(tx, 25, &ret_bytes);
-
                 return null;
             }
 
@@ -1994,8 +1526,6 @@ namespace AO_Lib
 
             }
           
-        
-
             public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мкс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
             {
                 //здесь MHz_start = m_f0 - начальна частота в МГц    
@@ -2191,8 +1721,6 @@ namespace AO_Lib
                 return 0;
             }
 
-
-
             public override string Ask_required_dev_file()
             {
                 return ("(special *.dev file)");
@@ -2266,17 +1794,15 @@ namespace AO_Lib
            
 #region Перегрузки WriteUsb
             //Перегрузки, которую можно юзать
-            public unsafe bool WriteUsb()
-            {
-                int count_in = Own_UsbBuf.Length;
-                return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort,count_in, Own_UsbBuf);
-            }
-
-            //Перегрузка, которую юзаем везде
-            public unsafe bool WriteUsb(int count)
-            { return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort, count, Own_UsbBuf); }
-            public unsafe bool WriteUsb(byte[] ByteMass,int count)
-            { return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort, count, ByteMass); }
+public unsafe bool WriteUsb()
+{
+    int count_in = Own_UsbBuf.Length;
+    return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort,count_in, Own_UsbBuf);
+}
+public unsafe bool WriteUsb(int count)
+{ return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort, count, Own_UsbBuf); }
+public unsafe bool WriteUsb(byte[] ByteMass,int count)
+{ return AO_Devices.FTDIController_lib.WriteUsb(Own_m_hPort, count, ByteMass); }
 
             #endregion
         }
@@ -2482,8 +2008,6 @@ namespace AO_Lib
         public enum FilterTypes
         {
             Emulator = 0,
-            VNIIFTRI_Filter_v15,
-            VNIIFTRI_Filter_v20,
             STC_Filter,
             EthernetFilter
         }

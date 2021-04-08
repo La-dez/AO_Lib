@@ -10,68 +10,68 @@ namespace AO_Lib
     {
         public class Math
         {
-            public static double Interpolate_value(double x1, double y1, double x2, double y2, double x_tofind)
-            {
-                return ((y2 - y1) / (x2 - x1)) * (x_tofind - x1) + y1;
-            }
-            public static List<PointF> Interpolate_curv(float[] Wls, float[] Hzs)
-            {
-                List<PointF> result = new List<PointF>();
-                int count_of_gaps = Wls.Length - 1;
+public static double Interpolate_value(double x1, double y1, double x2, double y2, double x_tofind)
+{
+    return ((y2 - y1) / (x2 - x1)) * (x_tofind - x1) + y1;
+}
+public static List<PointF> Interpolate_curv(float[] Wls, float[] Hzs)
+{
+    List<PointF> result = new List<PointF>();
+    int count_of_gaps = Wls.Length - 1;
 
-                for (int i = 0; i < count_of_gaps; i++)
-                {
-                    result.Add(new PointF(Wls[i], Hzs[i]));
-                    float count_of_wls_to_restruct = (Wls[i + 1] - Wls[i] - 1);
-                    for (int j = 1; j <= count_of_wls_to_restruct; j++)
-                    {
-                        float new_hz_val = Hzs[i] + j * ((float)(Hzs[i + 1] - Hzs[i])) / (Wls[i + 1] - Wls[i]);// = (x- Hzs[i] )/ (float)j;
-                        result.Add(new PointF(Wls[i] + j, new_hz_val));
-                    }
-                }
-                result.Add(new PointF(Wls[count_of_gaps], Hzs[count_of_gaps]));
-                return result;
-            }
-            public static void Interpolate_curv(ref float[] Wls, ref float[] Hzs, float precision = 1f)
-            {
-                List<PointF> result = new List<PointF>();
-                if (precision != 1)
-                {
-                    for (int i = 0; i < Wls.Length; i++)
-                    {
-                        Wls[i] /= precision;
-                    }
-                }
-                int count_of_gaps = Wls.Length - 1;
-
-                for (int i = 0; i < count_of_gaps; i++)
-                {
-                    result.Add(new PointF(Wls[i], Hzs[i]));
-                    float count_of_wls_to_restruct = (Wls[i + 1] - Wls[i] - 1);
-                    for (int j = 1; j <= count_of_wls_to_restruct; j++)
-                    {
-                        float new_hz_val = Hzs[i] + j * ((float)(Hzs[i + 1] - Hzs[i])) / (Wls[i + 1] - Wls[i]);// = (x- Hzs[i] )/ (float)j;
-                        result.Add(new PointF(Wls[i] + j, new_hz_val));
-                    }
-                }
-                result.Add(new PointF(Wls[count_of_gaps], Hzs[count_of_gaps]));
-                int data_count = result.Count;
-                Wls = new float[data_count];
-                Hzs = new float[data_count];
-                for (int i = 0; i < data_count; i++)
-                {
-                    Wls[i] = result[i].X;
-                    Hzs[i] = result[i].Y;
-                }
-                if (precision != 1)
-                {
-                    for (int i = 0; i < Wls.Length; i++)
-                    {
-                        Wls[i] *= precision;
-                    }
-                }
-            }
+    for (int i = 0; i < count_of_gaps; i++)
+    {
+        result.Add(new PointF(Wls[i], Hzs[i]));
+        float count_of_wls_to_restruct = (Wls[i + 1] - Wls[i] - 1);
+        for (int j = 1; j <= count_of_wls_to_restruct; j++)
+        {
+            float new_hz_val = Hzs[i] + j * ((float)(Hzs[i + 1] - Hzs[i])) / (Wls[i + 1] - Wls[i]);// = (x- Hzs[i] )/ (float)j;
+            result.Add(new PointF(Wls[i] + j, new_hz_val));
         }
+    }
+    result.Add(new PointF(Wls[count_of_gaps], Hzs[count_of_gaps]));
+    return result;
+}
+public static void Interpolate_curv(ref float[] Wls, ref float[] Hzs, float precision = 1f)
+{
+    List<PointF> result = new List<PointF>();
+    if (precision != 1)
+    {
+        for (int i = 0; i < Wls.Length; i++)
+        {
+            Wls[i] /= precision;
+        }
+    }
+    int count_of_gaps = Wls.Length - 1;
+
+    for (int i = 0; i < count_of_gaps; i++)
+    {
+        result.Add(new PointF(Wls[i], Hzs[i]));
+        float count_of_wls_to_restruct = (Wls[i + 1] - Wls[i] - 1);
+        for (int j = 1; j <= count_of_wls_to_restruct; j++)
+        {
+            float new_hz_val = Hzs[i] + j * ((float)(Hzs[i + 1] - Hzs[i])) / (Wls[i + 1] - Wls[i]);// = (x- Hzs[i] )/ (float)j;
+            result.Add(new PointF(Wls[i] + j, new_hz_val));
+        }
+    }
+    result.Add(new PointF(Wls[count_of_gaps], Hzs[count_of_gaps]));
+    int data_count = result.Count;
+    Wls = new float[data_count];
+    Hzs = new float[data_count];
+    for (int i = 0; i < data_count; i++)
+    {
+        Wls[i] = result[i].X;
+        Hzs[i] = result[i].Y;
+    }
+    if (precision != 1)
+    {
+        for (int i = 0; i < Wls.Length; i++)
+        {
+            Wls[i] *= precision;
+        }
+    }
+}
+}
         public class Files
         {
             public static List<string> Read_txt(string path)

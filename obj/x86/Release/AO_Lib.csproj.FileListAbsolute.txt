@@ -33,3 +33,9 @@ D:\Dev\AO_Lib\obj\x86\Release\AO_Lib.csprojAssemblyReference.cache
 D:\Dev\AO_Lib\obj\x86\Release\AO_Lib.csproj.CoreCompileInputs.cache
 D:\Dev\AO_Lib\obj\x86\Release\AO_Lib.dll
 D:\Dev\AO_Lib\obj\x86\Release\AO_Lib.pdb
+E:\Работа Саша\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.csprojAssemblyReference.cache
+E:\Работа Саша\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.csproj.CoreCompileInputs.cache
+E:\Работа Саша\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.dll
+E:\Работа Саша\AOD and AOF\AO_Lib\obj\x86\Release\AO_Lib.pdb
+E:\Работа Саша\AOD and AOF\AO_Lib\bin\x86\Release\AO_Lib.dll
+E:\Работа Саша\AOD and AOF\AO_Lib\bin\x86\Release\AO_Lib.pdb
