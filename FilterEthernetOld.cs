@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace AO_Lib
 {
-    public class EthernetFilter : AO_Filter, ISweepable
+    public class EthernetFilterOld : AO_Filter, ISweepable
     {
         public override bool SweepAvailable { get { return true; } }
         public override FilterTypes FilterType => FilterTypes.EthernetFilter;
@@ -64,17 +64,17 @@ namespace AO_Lib
 
         private int Port => ipEndPoint.Port;
 
-        public EthernetFilter(string ipAddress, int port)
+        public EthernetFilterOld(string ipAddress, int port)
         {
             Init_device(ipAddress, port);
         }
 
-        public EthernetFilter(IPEndPoint ipEndPoint)
+        public EthernetFilterOld(IPEndPoint ipEndPoint)
         {
             Init_device(ipEndPoint);
         }
 
-        ~EthernetFilter()
+        ~EthernetFilterOld()
         {
             this.PowerOff();
             this.Dispose();
@@ -176,9 +176,6 @@ namespace AO_Lib
             return 0;
         }
 
-        private int lastCommandNumber = 0;
-        public int LastCommandNumber => lastCommandNumber;
-
         /// <summary>
         /// Устанавливает на АОФ заданную частоту в МГц.
         /// </summary>
@@ -196,10 +193,8 @@ namespace AO_Lib
                 /*string s = Create_string_forHzTune(freq);
                 Write(s);*/
 
-                //byte[] buffer = Create_byteMass_forHzTune(freq);
-                //WriteBytes(buffer, 10, 2);
-                string command = String.Format(commandsCultureInfo, setFreqString, lastCommandNumber, freq, sCurrent_Attenuation);
-                WriteCommand(command);
+                byte[] buffer = Create_byteMass_forHzTune(freq);
+                WriteBytes(buffer, 10, 2);
 
                 /*if (MS_delay > 0)
                     Thread.Sleep(MS_delay);*/
@@ -213,18 +208,6 @@ namespace AO_Lib
             {
                 return 1;
             }
-        }
-
-        private void WriteCommand(string command)
-        {
-            try
-            {
-                byte[] buffer = ASCIIEncoding.ASCII.GetBytes(command);
-                netStream.Write(buffer, 0, buffer.Length);
-                lastCommandNumber++;
-                //WriteBytes(buffer, buffer.Length, 1);
-            }
-            catch (Exception) { }
         }
 
         public int Set_Hz(float freq, float pCoef_Power_Decrement = 000)
@@ -411,13 +394,6 @@ namespace AO_Lib
 
         private byte[] onBytes = new byte[] { 0x01, 0x02, 0xFF };
         private byte[] offBytes = new byte[] { 0x02, 0x02, 0xFF };
-        private const string offString = "#dds_off#";
-        private const string onString = "#dds_on#";
-        private const string setFreqString = "#set_freq~{0}~{1}~{2}#";
-        private const string getSensDataString = "#get_sensor_data#";
-        private const string freqOkSubstring = "#set_freq_ok~";
-        private const string sensDataSubstring = "#sensor_data~";
-        private CultureInfo commandsCultureInfo = CultureInfo.InvariantCulture;
 
         public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мкс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
         {
@@ -564,7 +540,6 @@ namespace AO_Lib
             //var state = Set_Hz((HZ_Max + HZ_Min) / 2);
             //Write("1 ");
             //WriteBytes(onBytes, onBytes.Length, 10);
-            WriteCommand(onString);
             sAOF_isPowered = true;
             return 0;
         }
@@ -582,8 +557,7 @@ namespace AO_Lib
                 {
                     //HARDCODE
                     //Write("2 ");
-                    WriteCommand(offString);
-                    //WriteBytes(offBytes, offBytes.Length, 4);
+                    WriteBytes(offBytes, offBytes.Length, 4);
                     //Write(buffer, 0, 1);
                 }
                 catch
@@ -687,58 +661,6 @@ namespace AO_Lib
             }*/
 
             return false;
-        }
-
-        public byte[] GetSensorsBytesData(int timeout_ms)
-        {
-            return GetBytesData(sensDataSubstring, timeout_ms);
-        }
-
-        public byte[] GetBytesData(string commandSubstring, int timeout_ms)
-        {
-            byte[] command = ASCIIEncoding.ASCII.GetBytes(getSensDataString);
-            netStream.Write(command, 0, command.Length);
-
-            int lastTimeout = netStream.ReadTimeout;
-            netStream.ReadTimeout = timeout_ms;
-
-            byte[] incomingData = ReadMessageViaTemplate(commandSubstring, "#");
-
-            netStream.Read(incomingData, 0, incomingData.Length);
-            
-            netStream.ReadTimeout = lastTimeout;
-
-            return incomingData;
-        }
-
-        public byte[] ReadMessageViaTemplate(string substring, string ends)
-        {
-            //int state = 0; //0 - substring reading, 1 - data reading, 2 - ends reading, 3 - complete
-            int inclen = (int)netStream.Length;
-            byte[] buff = new byte[inclen];
-            netStream.Read(buff, 0, inclen);
-
-            string str = ASCIIEncoding.ASCII.GetString(buff);
-            string sub = str.Substring(substring.Length, inclen - substring.Length - 1);
-
-            return ASCIIEncoding.ASCII.GetBytes(sub);// buff;
-            /*while (true)
-            {
-                if (state == 0)
-                {
-                    
-                }
-                else if (state == 1)
-                {
-
-                }
-                else if (state == 2)
-                {
-
-                }
-                if (state == 3)
-                    break;
-            }*/
         }
 
         private string decode(string s)

@@ -84,6 +84,7 @@
     <Compile Include="AOD.cs" />
     <Compile Include="AOF.cs" />
     <Compile Include="FilterEthernet.cs" />
+    <Compile Include="FilterEthernetOld.cs" />
     <Compile Include="Helper.cs" />
     <Compile Include="ISweepable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
