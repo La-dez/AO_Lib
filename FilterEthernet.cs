@@ -198,7 +198,7 @@ namespace AO_Lib
 
                 //byte[] buffer = Create_byteMass_forHzTune(freq);
                 //WriteBytes(buffer, 10, 2);
-                string command = String.Format(commandsCultureInfo, setFreqString, lastCommandNumber, freq, sCurrent_Attenuation);
+                string command = String.Format(commandsCultureInfo, commandSetFreqString, lastCommandNumber, freq*10, sCurrent_Attenuation);
                 WriteCommand(command);
 
                 /*if (MS_delay > 0)
@@ -251,20 +251,22 @@ namespace AO_Lib
 
                     Write(s);*/
 
-                    byte[] buffer;
+                    //byte[] buffer;
 
                     if (pCoef_Power_Decrement == 0)
                     {
-                        buffer = Create_byteMass_forHzTune(freq);
+                        //buffer = Create_byteMass_forHzTune(freq);
                         sCurrent_Attenuation = (int)pCoef_Power_Decrement;
                     }
                     else
                     {
-                        buffer = Create_byteMass_forHzTune(freq, (uint)pCoef_Power_Decrement);
+                        //buffer = Create_byteMass_forHzTune(freq, (uint)pCoef_Power_Decrement);
                         sCurrent_Attenuation = (int)pCoef_Power_Decrement;
                     }
 
-                    WriteBytes(buffer, 10, 2);
+                    //WriteBytes(buffer, 10, 2);
+                    string command = String.Format(commandsCultureInfo, commandSetFreqString, lastCommandNumber, freq * 10, sCurrent_Attenuation);
+                    WriteCommand(command);
 
                     /*if (MS_delay > 0)
                         Thread.Sleep(MS_delay);*/
@@ -409,14 +411,16 @@ namespace AO_Lib
             return 1;
         }
 
+        //old
         private byte[] onBytes = new byte[] { 0x01, 0x02, 0xFF };
         private byte[] offBytes = new byte[] { 0x02, 0x02, 0xFF };
-        private const string offString = "#dds_off#";
-        private const string onString = "#dds_on#";
-        private const string setFreqString = "#set_freq~{0}~{1}~{2}#";
-        private const string getSensDataString = "#get_sensor_data#";
-        private const string freqOkSubstring = "#set_freq_ok~";
-        private const string sensDataSubstring = "#sensor_data~";
+
+        private const string commandOffString = "#dds_off#";
+        private const string commandOnString = "#dds_on#";
+        private const string commandSetFreqString = "#set_freq~{0:F0}~{1:F0}~{2:F0}#"; //#set_freq~N~A1~A2#, N - command number, A1 - freq [MHz], A2 - amplitude
+        private const string commandGetSensDataString = "#get_sensor_data#";
+        private const string freqOkSubstring = "#set_freq_ok~"; //#set_freq_ok~N#
+        private const string sensDataSubstring = "#sensor_data~"; //#sensor_data~DATA# DATA - 29 bytes array
         private CultureInfo commandsCultureInfo = CultureInfo.InvariantCulture;
 
         public override int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мкс с точностью до двух знаков,минимум 1]*/, bool OnRepeat)
@@ -564,7 +568,7 @@ namespace AO_Lib
             //var state = Set_Hz((HZ_Max + HZ_Min) / 2);
             //Write("1 ");
             //WriteBytes(onBytes, onBytes.Length, 10);
-            WriteCommand(onString);
+            WriteCommand(commandOnString);
             sAOF_isPowered = true;
             return 0;
         }
@@ -582,7 +586,7 @@ namespace AO_Lib
                 {
                     //HARDCODE
                     //Write("2 ");
-                    WriteCommand(offString);
+                    WriteCommand(commandOffString);
                     //WriteBytes(offBytes, offBytes.Length, 4);
                     //Write(buffer, 0, 1);
                 }
@@ -696,37 +700,72 @@ namespace AO_Lib
 
         public byte[] GetBytesData(string commandSubstring, int timeout_ms)
         {
-            byte[] command = ASCIIEncoding.ASCII.GetBytes(getSensDataString);
+            byte[] command = ASCIIEncoding.ASCII.GetBytes(commandGetSensDataString);
+
+            while(true) {
+                if (!netStream.DataAvailable || netStream.ReadByte() == -1)
+                    break;
+            } //clear stream
             netStream.Write(command, 0, command.Length);
 
             int lastTimeout = netStream.ReadTimeout;
             netStream.ReadTimeout = timeout_ms;
 
-            byte[] incomingData = ReadMessageViaTemplate(commandSubstring, "#");
+            byte[] incomingData = ReadMessageViaTemplate(commandSubstring);
 
-            netStream.Read(incomingData, 0, incomingData.Length);
+            //netStream.Read(incomingData, 0, incomingData.Length);
             
             netStream.ReadTimeout = lastTimeout;
 
             return incomingData;
         }
 
-        public byte[] ReadMessageViaTemplate(string substring, string ends)
+        public byte[] ReadMessageViaTemplate(string substring)
         {
-            //int state = 0; //0 - substring reading, 1 - data reading, 2 - ends reading, 3 - complete
-            int inclen = (int)netStream.Length;
+            int inclen = 200;// (int)netStream.Length;
             byte[] buff = new byte[inclen];
-            netStream.Read(buff, 0, inclen);
+            int count = netStream.Read(buff, 0, inclen);
 
-            string str = ASCIIEncoding.ASCII.GetString(buff);
-            string sub = str.Substring(substring.Length, inclen - substring.Length - 1);
+            string str = ASCIIEncoding.UTF8.GetString(buff, 0, count);
+            string sub = str.Substring(substring.Length, count - substring.Length - 1);
 
-            return ASCIIEncoding.ASCII.GetBytes(sub);// buff;
-            /*while (true)
+            byte[] databytes = new byte[count - substring.Length - 1];
+            int offset = substring.Length;
+            for (int i = 0; i < databytes.Length; i++)
+            {
+                databytes[i] = buff[offset + i];
+            }
+
+            //byte[] databytes = ASCIIEncoding.UTF8.GetBytes(sub);// buff;
+
+            byte[] realbytes = new byte[databytes.Length/2];
+
+            int j = 0;
+            for(int i = 0; i < databytes.Length; i+=2)
+            {
+                if(databytes[i] == databytes[i+1])
+                {
+                    realbytes[j] = databytes[i];
+                }
+                else
+                {
+                    realbytes[j] = 0;
+                }
+                j++;
+            }
+
+            return realbytes;
+        }
+
+        private void ReadData(string template, int timeout_ms)
+        {
+            int state = 0; //0 - substring reading, 1 - data reading, 2 - ends reading, 3 - complete
+
+            while (true)
             {
                 if (state == 0)
                 {
-                    
+
                 }
                 else if (state == 1)
                 {
@@ -738,7 +777,7 @@ namespace AO_Lib
                 }
                 if (state == 3)
                     break;
-            }*/
+            }
         }
 
         private string decode(string s)
@@ -808,7 +847,8 @@ namespace AO_Lib
 
         public int SetHz_KeepSweep(float MHz, bool keep = true)
         {
-            throw new NotImplementedException();
+            return Set_Hz(MHz);
+            //throw new NotImplementedException();
         }
     }
 }
