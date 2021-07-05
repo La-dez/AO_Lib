@@ -83,6 +83,7 @@
   <ItemGroup>
     <Compile Include="AOD.cs" />
     <Compile Include="AOF.cs" />
+    <Compile Include="AO_Synt_Func.cs" />
     <Compile Include="FilterEthernet.cs" />
     <Compile Include="Helper.cs" />
     <Compile Include="ISweepable.cs" />
