@@ -47,6 +47,8 @@ namespace AO_Lib
             public abstract float WL_Min { get; }
             public abstract float HZ_Max { get; }
             public abstract float HZ_Min { get; }
+            public virtual float Intensity_Max { get { return Intensity.Max(); } }
+            public virtual float Intensity_Min { get { return Intensity.Min(); } }
             protected virtual float sHZ_Current { set; get; }
             protected virtual float sWL_Current { set; get; }
             public float WL_Current { get { return sWL_Current; } }
