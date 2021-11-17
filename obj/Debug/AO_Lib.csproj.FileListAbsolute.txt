@@ -29,3 +29,9 @@ C:\Dev\AO_Lib\bin\Debug\AO_Lib.pdb
 C:\Dev\AO_Lib\obj\Debug\AO_Lib.csproj.CoreCompileInputs.cache
 C:\Dev\AO_Lib\obj\Debug\AO_Lib.dll
 C:\Dev\AO_Lib\obj\Debug\AO_Lib.pdb
+D:\Dev\AO_Lib\bin\Debug\AO_Lib.dll
+D:\Dev\AO_Lib\bin\Debug\AO_Lib.pdb
+D:\Dev\AO_Lib\obj\Debug\AO_Lib.csproj.AssemblyReference.cache
+D:\Dev\AO_Lib\obj\Debug\AO_Lib.csproj.CoreCompileInputs.cache
+D:\Dev\AO_Lib\obj\Debug\AO_Lib.dll
+D:\Dev\AO_Lib\obj\Debug\AO_Lib.pdb

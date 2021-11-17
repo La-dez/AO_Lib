@@ -162,6 +162,7 @@ namespace AO_Lib
                 }
                 WasLastSetting = true;
             }
+
             //перестройка ДВ пропускания
             public virtual int Set_Wl(float pWL)
             {
@@ -191,9 +192,9 @@ namespace AO_Lib
             {
                 sAO_Sweep_On = false;
 
-                if ((freq > HZ_Max) || (freq < HZ_Min))
+                if ((freq > HZ_Max) || (freq < HZ_Min) || freq == 0f)
                     throw new Exception(String.Format("Unable to set this freq. Please, enter the ultrasound frequency value in {0} - {1} MHz range.", HZ_Min, HZ_Max));
-                else if (InnerTimer != null)
+                /*else if (InnerTimer != null)
                 {
                     if (!IsReady2set)
                     {
@@ -211,7 +212,8 @@ namespace AO_Lib
                         return 0;
                     }
                 }
-                else return 0;
+                else return 0;*/
+                return 0;
             }
 
             public abstract int Set_Sweep_on(float MHz_start, float Sweep_range_MHz, double Period/*[мс с точностью до двух знаков]*/, bool OnRepeat);
@@ -229,6 +231,29 @@ namespace AO_Lib
 
             public abstract string Ask_required_dev_file();
             public virtual string Ask_loaded_dev_file() { return FilterCfgName; }
+
+            public void WriteDevData(List<double> frequencys, List<double> wavelengthes, List<double> amplitudes, string filename)
+            {
+                sBit_inverse_needed = false;
+                FilterCfgPath = "";
+                FilterCfgName = filename;
+                
+                int rows = frequencys.Count;
+                if (WLs == null || WLs.Length != rows)
+                    WLs = new float[rows];
+                if (HZs == null || HZs.Length != rows)
+                    HZs = new float[rows];
+                if (Intensity == null || Intensity.Length != rows)
+                    Intensity = new float[rows];
+
+                for(int i = 0; i < rows; i++)
+                {
+                    HZs[i] = (float)frequencys[rows-i-1];
+                    WLs[i] = (float)wavelengthes[rows-i-1];
+                    Intensity[i] = (float)amplitudes[rows-i-1];
+                }
+            }
+
             public virtual int Read_dev_file(string path)
             {
                 // throw new Exception("Ur in lib now 8"); 
